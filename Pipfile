@@ -16,6 +16,7 @@ tqdm = "*"
 catboost = "*"
 category-encoders = "*"
 lightgbm = "*"
+feather-format = "*"
 
 [requires]
 python_version = "3.7"
