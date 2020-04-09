@@ -26,6 +26,7 @@ config = {
 
 save_model = True
 
+
 def main():
     # Load Data  #####################################
     print('Data Loading...')
