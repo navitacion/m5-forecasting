@@ -1,41 +1,60 @@
+import glob, pickle
+import pandas as pd
 from sklearn.model_selection import KFold
 
 from utils.preprocessing import preprocessing
-from utils.load_data import load_data
-from model.LightGBM import LGBMModel
+from utils.utils import load_data, load_from_feather
+from utils.parameters import *
+from model.Model import LGBMModel
 
+
+
+# Config  #####################################
+config = {
+    'features': [
+        'weekday', 'snap', 'lag_7', 'lag_14', 'lag_21', 'lag_28',
+        'lag_7_win_7', 'lag_14_win_14', 'lag_21_win_21', 'lag_28_win_28',
+        'rmean_7', 'rmean_14', 'rmean_21', 'rmean_28', 'sell_price'
+                 ],
+    'params': lgbm_params_2,
+    'cv': KFold(n_splits=3, shuffle=True),
+    'num_boost_round': 100,
+    'early_stopping_rounds': 10,
+    'verbose': 20,
+    'exp_name': 'LightGBM_01'
+}
+
+save_model = True
 
 def main():
     # Load Data  #####################################
-    data_dir = '../data'
-    train, vals, evals = load_data(data_dir)
+    print('Data Loading...')
+    # From Original
+    # data_dir = '../data/input'
+    # df = load_data(nrows=None, merge=True, data_dir=data_dir)
 
-    train, vals, evals = preprocessing(train, vals, evals)
+    # From Feather
+    target_path = ['../features/Weekday.ftr', '../features/Snap.ftr', '../features/Lag.ftr',
+                   '../features/RollMean.ftr', '../features/SellPrice.ftr'
+                   ]
+    df = load_from_feather(target_path)
 
-    # Config  #####################################
-    params = {
-        'boosting_type': 'gbdt',
-        'objective': 'regression',
-        'metric': 'rmse',
-        'learning_rate': 0.05,
-    }
+    # Model Training  #####################################
+    print('Model Training...')
+    lgbm = LGBMModel(df, **config)
+    model, importance_df = lgbm.train()
 
-    cv = KFold(n_splits=3)
-    num_boost_round = 5000
-    early_stopping_rounds = 200
-    verbose = 1000
-    exp_name = 'LGBM_01'
-
-    # Model Setting  #####################################
-    print('LightGBM Model Building...')
-    lgbm = LGBMModel(train, vals, evals, exp_name)
-    model, importance_df = lgbm.train(params, cv, num_boost_round, early_stopping_rounds, verbose, savemodel=True)
-
+    if save_model:
+        with open(f"../models/{config['exp_name']}.pkl", 'wb') as f:
+            pickle.dump(model, f)
 
     # Evaluate  #####################################
     print('Evaluate...')
     res = lgbm.evaluate()
     res.to_csv('../data/output/submission.csv', index=False)
+
+    # Feature Importance  #####################################
+    lgbm.visualize_feature_importance()
 
 
 if __name__ == '__main__':
