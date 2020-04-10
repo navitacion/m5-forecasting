@@ -106,11 +106,11 @@ if __name__ == '__main__':
     with open('../data/input/data.pkl', 'rb') as f:
         df = pickle.load(f)
 
-    SellPrice(df, dir=save_dir).run().save()
-    Weekday(df, dir=save_dir).run().save()
-    TimeFeatures(df, dir=save_dir).run().save()
-    Snap(df, dir=save_dir).run().save()
-    Lag(df, dir=save_dir).run().save()
+    # SellPrice(df, dir=save_dir).run().save()
+    # Weekday(df, dir=save_dir).run().save()
+    # TimeFeatures(df, dir=save_dir).run().save()
+    # Snap(df, dir=save_dir).run().save()
+    # Lag(df, dir=save_dir).run().save()
     Lag_RollMean(df, dir=save_dir).run().save()
     Event(df, dir=save_dir).run().save()
     Ids(df, dir=save_dir).run().save()

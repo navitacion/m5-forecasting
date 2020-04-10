@@ -21,6 +21,10 @@ class M5Model(metaclass=ABCMeta):
         self.verbose = verbose
         self.exp_name = exp_name
 
+        # featuresがNoneの場合はすべての変数を使う
+        if features is None:
+            features = [c for c in df.columns if c not in ['id', 'part', 'date', 'demand']]
+
         train = df[df['part'] == 'train']
         # 価格がないものは販売していないため除外する
         train.dropna(inplace=True)

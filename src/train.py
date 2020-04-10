@@ -11,11 +11,7 @@ from model.Model import LGBMModel
 
 # Config  #####################################
 config = {
-    'features': [
-        'weekday', 'snap', 'lag_7', 'lag_14', 'lag_21', 'lag_28',
-        'lag_7_win_7', 'lag_14_win_14', 'lag_21_win_21', 'lag_28_win_28',
-        'rmean_7', 'rmean_14', 'rmean_21', 'rmean_28', 'sell_price'
-                 ],
+    'features': None,
     'params': lgbm_params_2,
     'cv': KFold(n_splits=3, shuffle=True),
     'num_boost_round': 100,
@@ -35,9 +31,8 @@ def main():
     # df = load_data(nrows=None, merge=True, data_dir=data_dir)
 
     # From Feather
-    target_path = ['../features/Weekday.ftr', '../features/Snap.ftr', '../features/Lag.ftr',
-                   '../features/RollMean.ftr', '../features/SellPrice.ftr'
-                   ]
+    target_features = ['Weekday', 'Snap', 'Lag', 'SellPrice', 'Lag_RollMean', 'TimeFeatures', 'Event']
+    target_path = [f'../features/{name}.ftr' for name in target_features]
     df = load_from_feather(target_path)
 
     # Model Training  #####################################
