@@ -41,7 +41,6 @@ def main():
     df = load_from_feather(target_path)
 
     # Model Training  #####################################
-    print('Model Training...')
     lgbm = LGBMModel(df, **config)
     model, importance_df = lgbm.train()
 
@@ -50,9 +49,9 @@ def main():
             pickle.dump(model, f)
 
     # Evaluate  #####################################
-    print('Evaluate...')
     res = lgbm.evaluate()
-    res.to_csv('../data/output/submission.csv', index=False)
+    sub_name = f"{config['exp_name']}_rmse_{lgbm.score:.3f}.csv"
+    res.to_csv(f'../data/output/{sub_name}', index=False)
 
     # Feature Importance  #####################################
     lgbm.visualize_feature_importance()

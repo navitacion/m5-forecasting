@@ -57,7 +57,7 @@ class M5Model(metaclass=ABCMeta):
     def visualize_feature_importance(self, savefig=True):
         assert len(self.models) != 0, 'Model is not trained...'
         _importance_df = self.importance_df.sort_values(by='importance', ascending=False)
-        fig = plt.figure(figsize=(12, int(2 * len(_importance_df.shape[0]))), facecolor='w')
+        fig = plt.figure(figsize=(12, int(2 * _importance_df.shape[0])), facecolor='w')
         sns.barplot(x='importance', y='features', data=_importance_df)
         plt.title('Feature Imporrance')
         if savefig:
@@ -69,6 +69,7 @@ class LGBMModel(M5Model):
 
     def train(self):
         print('LightGBM Model Training...')
+        self.score = 0.0
         for i, (trn_idx, val_idx) in enumerate(self.cv.split(self.X)):
             train_data = lgb.Dataset(self.X[trn_idx], label=self.target[trn_idx])
             valid_data = lgb.Dataset(self.X[val_idx], label=self.target[val_idx], reference=train_data)
@@ -87,8 +88,11 @@ class LGBMModel(M5Model):
 
             pred = model.predict(self.X[val_idx], num_iteration=model.best_iteration)
             rmse = np.sqrt(mean_squared_error(y_true=self.target[val_idx], y_pred=pred))
+            self.score += rmse / self.cv.get_n_splits()
             print(f'{i + 1} Fold  RMSE: {rmse:.3f}')
             print('#' * 30)
+
+        print(f'All Fold RMSE: {self.score:.3f}')
 
         self.importance_df = pd.DataFrame({
             'features': self.features,
