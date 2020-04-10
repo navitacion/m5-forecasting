@@ -90,7 +90,7 @@ class Ids(Feature):
     各種ID
     """
     def create_features(self):
-        self.colname = ['item_id', 'dept_id', 'cat_id', 'store_id', 'state_id']
+        self.new_colname = ['item_id', 'dept_id', 'cat_id', 'store_id', 'state_id']
         for f in self.new_colname:
             encoder = LabelEncoder()
             self.df[f] = encoder.fit_transform(self.df[f])
@@ -106,11 +106,13 @@ if __name__ == '__main__':
     with open('../data/input/data.pkl', 'rb') as f:
         df = pickle.load(f)
 
-    SellPrice(df, dir=save_dir).run().save()
-    Weekday(df, dir=save_dir).run().save()
-    TimeFeatures(df, dir=save_dir).run().save()
-    Snap(df, dir=save_dir).run().save()
-    Lag(df, dir=save_dir).run().save()
-    Lag_RollMean(df, dir=save_dir).run().save()
-    Event(df, dir=save_dir).run().save()
+    print(df.columns)
+
+    # SellPrice(df, dir=save_dir).run().save()
+    # Weekday(df, dir=save_dir).run().save()
+    # TimeFeatures(df, dir=save_dir).run().save()
+    # Snap(df, dir=save_dir).run().save()
+    # Lag(df, dir=save_dir).run().save()
+    # Lag_RollMean(df, dir=save_dir).run().save()
+    # Event(df, dir=save_dir).run().save()
     Ids(df, dir=save_dir).run().save()
