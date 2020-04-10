@@ -5,6 +5,7 @@ lgbm_params = {
     'objective': 'regression',
     'metric': 'rmse',
     'learning_rate': 0.5,
+    'num_iterations': 100
 }
 
 # https://www.kaggle.com/kneroma/m5-first-public-notebook-under-0-50
@@ -20,7 +21,7 @@ lgbm_params_2 = {
     # "nthread" : 4,
     "metric": ["rmse"],
     'verbosity': 1,
-    'num_iterations' : 2000,
+    'num_iterations' : 100,
     'num_leaves': 128,
     "min_data_in_leaf": 50,
 }

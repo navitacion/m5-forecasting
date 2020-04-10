@@ -21,7 +21,7 @@ config = {
     'num_boost_round': 100,
     'early_stopping_rounds': 10,
     'verbose': 20,
-    'exp_name': 'LightGBM_01'
+    'exp_name': 'LightGBM_03'
 }
 
 save_model = True

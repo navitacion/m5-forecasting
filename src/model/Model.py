@@ -22,6 +22,9 @@ class M5Model(metaclass=ABCMeta):
         self.exp_name = exp_name
 
         train = df[df['part'] == 'train']
+        # 価格がないものは販売していないため除外する
+        train.dropna(subset=['sell_price'], inplace=True)
+
         self.train_id = train['id'].values
         self.target = train['demand'].values
 
@@ -57,12 +60,11 @@ class M5Model(metaclass=ABCMeta):
     def visualize_feature_importance(self, savefig=True):
         assert len(self.models) != 0, 'Model is not trained...'
         _importance_df = self.importance_df.sort_values(by='importance', ascending=False)
-        fig = plt.figure(figsize=(12, int(2 * _importance_df.shape[0])), facecolor='w')
+        fig = plt.figure(figsize=(12, int(0.8 * _importance_df.shape[0])), facecolor='w')
         sns.barplot(x='importance', y='features', data=_importance_df)
         plt.title('Feature Imporrance')
         if savefig:
             plt.savefig(f'../fig/{self.exp_name}.png')
-        plt.show()
 
 
 class LGBMModel(M5Model):

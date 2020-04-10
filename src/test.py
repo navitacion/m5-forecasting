@@ -1,17 +1,18 @@
-import pickle
-import pandas as pd
+from utils.utils import load_data, load_from_feather
 
-# target_path = ['../features/Weekday.ftr', '../features/Snap.ftr', '../features/Lag.ftr',
-#                '../features/RollMean.ftr', '../features/SellPrice.ftr', '../features/Snap.ftr',
-#                '../features/Weekday.ftr']
-#
-# for path in target_path:
-#     d = pd.read_feather(path)
-#     print(path)
-#     print(d.columns)
-#     print('#'*30)
 
-a = pd.read_csv('../data/output/LightGBM_01_rmse_1.875.csv')
+# Load Data  #####################################
+print('Data Loading...')
+# From Original
+data_dir = '../data/input'
+df_org = load_data(nrows=None, merge=True, data_dir=data_dir)
 
-print(a.head())
-print(a.shape)
+# From Feather
+target_path = ['../features/Weekday.ftr', '../features/Snap.ftr', '../features/Lag.ftr',
+               '../features/RollMean.ftr', '../features/SellPrice.ftr'
+               ]
+df = load_from_feather(target_path)
+
+
+t = (df_org['demand'] != df['demand']).sum()
+print(t)

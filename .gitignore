@@ -5,3 +5,4 @@
 /features
 *.pyc
 /models/*
+fig/*
