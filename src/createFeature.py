@@ -24,7 +24,7 @@ class TimeFeatures(Feature):
     def create_features(self):
         self.new_colname = ['year', 'month', 'quarter', 'week', 'day', 'dayofweek', 'dayofyear']
         for c in self.new_colname:
-            self.df[c] = getattr(self.df.dt, c).astype(np.int32)
+            self.df[c] = getattr(self.df['date'].dt, c).astype(np.int32)
 
 
 class Snap(Feature):
