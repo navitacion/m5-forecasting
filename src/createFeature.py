@@ -5,10 +5,12 @@ from sklearn.preprocessing import LabelEncoder
 from utils.features import Feature
 from utils.utils import load_data
 
+
 class SellPrice(Feature):
     def create_features(self):
         self.new_colname = ['sell_price']
         self.df[self.new_colname[0]] = self.df[self.new_colname[0]].astype(np.float32)
+
 
 class Weekday(Feature):
     '''
@@ -56,6 +58,7 @@ class Lag(Feature):
         for lag, lagcol in zip([7, 14, 21, 28, 30, 90], self.new_colname):
             self.df[lagcol] = self.df[['id', 'demand']].groupby('id')['demand'].shift(lag)
 
+
 class Lag_RollMean(Feature):
     """
     lagと移動平均を組み合わせ
@@ -96,6 +99,16 @@ class Ids(Feature):
             self.df[f] = encoder.fit_transform(self.df[f])
 
 
+class Lag_SellPrice(Feature):
+    def create_features(self):
+        self.new_colname =[]
+        lags = [1, 2, 3, 7, 14]
+        for lag in lags:
+            col = f'sell_price_lag_{lag}'
+            self.df[col] = self.df[['id', 'sell_price']].groupby('id')['sell_price'].shift(lag)
+            self.new_colname.append(col)
+
+
 if __name__ == '__main__':
 
     save_dir = '../features'
@@ -106,8 +119,6 @@ if __name__ == '__main__':
     with open('../data/input/data.pkl', 'rb') as f:
         df = pickle.load(f)
 
-    print(df.columns)
-
     # SellPrice(df, dir=save_dir).run().save()
     # Weekday(df, dir=save_dir).run().save()
     # TimeFeatures(df, dir=save_dir).run().save()
@@ -115,4 +126,4 @@ if __name__ == '__main__':
     # Lag(df, dir=save_dir).run().save()
     # Lag_RollMean(df, dir=save_dir).run().save()
     # Event(df, dir=save_dir).run().save()
-    Ids(df, dir=save_dir).run().save()
+    # Ids(df, dir=save_dir).run().save()

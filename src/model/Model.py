@@ -9,7 +9,6 @@ from sklearn.metrics import mean_squared_error
 import lightgbm as lgb
 
 
-
 class M5Model(metaclass=ABCMeta):
     def __init__(self, df, features, params, cv, num_boost_round=1000,
                  early_stopping_rounds=20, verbose=200, exp_name='Model'):
@@ -27,7 +26,7 @@ class M5Model(metaclass=ABCMeta):
 
         train = df[df['part'] == 'train']
         # 価格がないものは販売していないため除外する
-        train.dropna(inplace=True)
+        train.dropna(subset=['sell_price'], inplace=True)
 
         self.train_id = train['id'].values
         self.target = train['demand'].values
@@ -66,7 +65,7 @@ class M5Model(metaclass=ABCMeta):
         _importance_df = self.importance_df.sort_values(by='importance', ascending=False)
         fig = plt.figure(figsize=(12, int(0.8 * _importance_df.shape[0])), facecolor='w')
         sns.barplot(x='importance', y='features', data=_importance_df)
-        plt.title('Feature Imporrance')
+        plt.title('Feature Importance')
         if savefig:
             plt.savefig(f'../fig/{self.exp_name}.png')
 

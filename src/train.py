@@ -1,4 +1,4 @@
-import glob, pickle
+import glob, pickle, time, datetime
 import pandas as pd
 from sklearn.model_selection import KFold
 
@@ -12,12 +12,12 @@ from model.Model import LGBMModel
 # Config  #####################################
 config = {
     'features': None,
-    'params': lgbm_params_2,
-    'cv': KFold(n_splits=3, shuffle=True),
-    'num_boost_round': 100,
-    'early_stopping_rounds': 10,
-    'verbose': 20,
-    'exp_name': 'LightGBM_03'
+    'params': lgbm_params,
+    'cv': KFold(n_splits=3, shuffle=False),
+    'num_boost_round': 10000,
+    'early_stopping_rounds': 200,
+    'verbose': 500,
+    'exp_name': 'LightGBM_02'
 }
 
 save_model = True
@@ -25,15 +25,17 @@ save_model = True
 
 def main():
     # Load Data  #####################################
+    since = time.time()
     print('Data Loading...')
     # From Original
     # data_dir = '../data/input'
     # df = load_data(nrows=None, merge=True, data_dir=data_dir)
 
     # From Feather
-    target_features = ['Weekday', 'Snap', 'Lag', 'SellPrice', 'Lag_RollMean', 'TimeFeatures', 'Event']
+    target_features = ['Weekday', 'Snap', 'Lag', 'SellPrice', 'Lag_RollMean', 'TimeFeatures', 'Event', 'Ids']
     target_path = [f'../features/{name}.ftr' for name in target_features]
     df = load_from_feather(target_path)
+    df.sort_values(by='date', ascending=True, inplace=True)
 
     # Model Training  #####################################
     lgbm = LGBMModel(df, **config)
@@ -50,6 +52,11 @@ def main():
 
     # Feature Importance  #####################################
     lgbm.visualize_feature_importance()
+
+    # Time Counting
+    erapsedtime = time.time() - since
+    s = datetime.timedelta(seconds=erapsedtime)
+    print(f'All Times: {str(s)}')
 
 
 if __name__ == '__main__':

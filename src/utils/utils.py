@@ -122,6 +122,7 @@ def load_from_feather(target_path):
 
     for i, path in enumerate(target_path):
         d = pd.read_feather(path)
+        d = reduce_mem_usage(d)
         if i == 0:
             df = d
         else:
