@@ -12,11 +12,11 @@ from model.Model import LGBMModel
 # Config  #####################################
 config = {
     'features': None,
-    'params': lgbm_params,
-    'cv': KFold(n_splits=3, shuffle=False),
-    'num_boost_round': 10000,
-    'early_stopping_rounds': 200,
-    'verbose': 500,
+    'params': lgbm_params_2,
+    'cv': KFold(n_splits=4, shuffle=False),
+    'num_boost_round': 50000,
+    'early_stopping_rounds': 500,
+    'verbose': 1000,
     'exp_name': 'LightGBM_02'
 }
 
@@ -32,7 +32,10 @@ def main():
     # df = load_data(nrows=None, merge=True, data_dir=data_dir)
 
     # From Feather
-    target_features = ['Weekday', 'Snap', 'Lag', 'SellPrice', 'Lag_RollMean', 'TimeFeatures', 'Event', 'Ids']
+    target_features = [
+        'Weekday', 'Snap', 'Lag', 'SellPrice', 'Lag_RollMean',
+        'TimeFeatures', 'Event', 'Ids', 'Lag_SellPrice'
+    ]
     target_path = [f'../features/{name}.ftr' for name in target_features]
     df = load_from_feather(target_path)
     df.sort_values(by='date', ascending=True, inplace=True)

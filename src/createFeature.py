@@ -102,6 +102,7 @@ class Ids(Feature):
 class Lag_SellPrice(Feature):
     def create_features(self):
         self.new_colname =[]
+        self.df['sell_price'] = self.df['sell_price'].astype(np.float32)
         lags = [1, 2, 3, 7, 14]
         for lag in lags:
             col = f'sell_price_lag_{lag}'
@@ -127,3 +128,4 @@ if __name__ == '__main__':
     # Lag_RollMean(df, dir=save_dir).run().save()
     # Event(df, dir=save_dir).run().save()
     # Ids(df, dir=save_dir).run().save()
+    Lag_SellPrice(df, dir=save_dir).run().save()
