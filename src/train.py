@@ -1,6 +1,6 @@
 import glob, pickle, time, datetime
 import pandas as pd
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, TimeSeriesSplit
 
 from utils.preprocessing import preprocessing
 from utils.utils import load_data, load_from_feather, reduce_mem_usage
@@ -12,15 +12,16 @@ from model.Model import LGBMModel
 # Config  #####################################
 config = {
     'features': None,
-    'params': lgbm_params_2,
-    'cv': KFold(n_splits=4, shuffle=False),
-    'num_boost_round': 50000,
+    'params': lgbm_params,
+    'cv': TimeSeriesSplit(n_splits=4),
+    'num_boost_round': 1000,
     'early_stopping_rounds': 100,
-    'verbose': 1000,
-    'exp_name': 'LightGBM_org_poisson'
+    'verbose': 100,
+    'exp_name': 'LightGBM_org_reg_timeseries'
 }
 
 save_model = True
+print(config['exp_name'])
 
 
 def main():
