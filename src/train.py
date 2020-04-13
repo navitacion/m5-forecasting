@@ -14,10 +14,10 @@ config = {
     'features': None,
     'params': lgbm_params,
     'cv': TimeSeriesSplit(n_splits=4),
-    'num_boost_round': 1000,
+    'num_boost_round': 200,
     'early_stopping_rounds': 100,
-    'verbose': 100,
-    'exp_name': 'LightGBM_org_reg_timeseries'
+    'verbose': 20,
+    'exp_name': 'LightGBM_pre_reg_timeseries'
 }
 
 save_model = True
@@ -37,6 +37,8 @@ def main():
         df = pickle.load(f)
     df = reduce_mem_usage(df)
     df = preprocessing(df)
+    print(df.columns)
+    print(df.head())
 
     # From Feather
     # target_features = [

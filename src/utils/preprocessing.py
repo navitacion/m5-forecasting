@@ -6,21 +6,43 @@ from sklearn.preprocessing import LabelEncoder
 
 def preprocessing(df):
     # Date  ##########################################
-    df['date'] = pd.to_datetime(df['date'].values)
-    df['weekday'] = df['date'].dt.weekday
+    new_colname = ['year', 'month', 'quarter', 'week', 'day', 'dayofweek', 'dayofyear', 'weekday']
+    for c in new_colname:
+        df[c] = getattr(df['date'].dt, c).astype(np.int32)
+
+    df.sort_values(by='date', ascending=True, inplace=True)
+    df.reset_index(drop=True, inplace=True)
 
     # integrate 'snap' feature  ######################
-    # def snap(row):
-    #     if 'CA' in row['store_id']:
-    #         return row['snap_CA']
-    #     elif 'TX' in row['store_id']:
-    #         return row['snap_TX']
-    #     elif 'WI' in row['store_id']:
-    #         return row['snap_WI']
-    #     else:
-    #         pass
-    #
-    # df['snap'] = df.apply(snap, axis=1)
+    df['snap'] = 0
+    df.loc[df[df['state_id'] == 'CA'].index, 'snap'] = df.loc[
+        df[df['state_id'] == 'CA'].index, 'snap_CA']
+
+    df.loc[df[df['state_id'] == 'TX'].index, 'snap'] = df.loc[
+        df[df['state_id'] == 'TX'].index, 'snap_TX']
+
+    df.loc[df[df['state_id'] == 'WI'].index, 'snap'] = df.loc[
+        df[df['state_id'] == 'WI'].index, 'snap_WI']
+
+    # Lag  ############################################
+    new_colname = ['lag_7', 'lag_14', 'lag_21', 'lag_28', 'lag_30', 'lag_90']
+    for lag, lagcol in zip([7, 14, 21, 28, 30, 90], new_colname):
+        df[lagcol] = df[['id', 'demand']].groupby('id')['demand'].shift(lag)
+
+    window = 28
+    periods = [7, 14, 21, 30, 90]
+    for period in periods:
+        df[f'rolling_{window}_mean_t{period}'] = df[['id', 'demand']].groupby('id')['demand'] \
+            .transform(lambda x: x.shift(window).rolling(period).mean())
+        df[f'rolling_{window}_std_t{period}'] = df[['id', 'demand']].groupby('id')['demand'] \
+            .transform(lambda x: x.shift(window).rolling(period).std())
+
+    # Lag - Sell_price  ############################################
+    df['sell_price'] = df['sell_price'].astype(np.float32)
+    lags = [1, 2, 3, 7, 14]
+    for lag in lags:
+        col = f'sell_price_lag_{lag}'
+        df[col] = df[['id', 'sell_price']].groupby('id')['sell_price'].shift(lag)
 
     # NaN  ############################################
     cols = {'event_name_1': 'Nodata',
