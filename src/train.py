@@ -8,7 +8,6 @@ from utils.parameters import *
 from model.Model import LGBMModel
 
 
-
 # Config  #####################################
 config = {
     'features': None,

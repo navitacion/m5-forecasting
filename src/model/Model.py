@@ -22,8 +22,9 @@ class M5Model(metaclass=ABCMeta):
 
         # featuresがNoneの場合はすべての変数を使う
         if features is None:
-            features = [c for c in df.columns if c not in ['id', 'part', 'date', 'demand']]
+            features = [c for c in df.columns if c not in ['id', 'part', 'date', 'demand', 'wm_yr_wk']]
 
+        # Train Data
         train = df[df['part'] == 'train']
         # 価格がないものは販売していないため除外する
         train.dropna(subset=['sell_price'], inplace=True)
@@ -31,23 +32,28 @@ class M5Model(metaclass=ABCMeta):
         train.sort_values(by='date', ascending=True, inplace=True)
         train.reset_index(drop=True, inplace=True)
 
+        self.features = features
+
         self.train_id = train['id'].values
         self.target = train['demand'].values
+        self.X = train[self.features].values
+        del train
+        gc.collect()
 
+        # Validation
         validation = df[df['part'] == 'test1']
         self.val_id = validation['id'].values
         self.val_date = validation['date'].values
+        self.vals = validation[self.features].values
+        del validation
+        gc.collect()
 
+        # Evaluation
         evaluation = df[df['part'] == 'test2']
         self.eval_id = evaluation['id'].values
         self.eval_date = evaluation['date'].values
-
-        self.features = features
-        self.X = train[self.features].values
-        self.vals = validation[self.features].values
         self.evals = evaluation[self.features].values
-
-        del train, validation, evaluation
+        del evaluation
         gc.collect()
 
         self.importances = np.zeros((len(self.features)))
