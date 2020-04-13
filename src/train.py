@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.model_selection import KFold
 
 from utils.preprocessing import preprocessing
-from utils.utils import load_data, load_from_feather
+from utils.utils import load_data, load_from_feather, reduce_mem_usage
 from utils.parameters import *
 from model.Model import LGBMModel
 
@@ -15,9 +15,9 @@ config = {
     'params': lgbm_params_2,
     'cv': KFold(n_splits=4, shuffle=False),
     'num_boost_round': 50000,
-    'early_stopping_rounds': 500,
+    'early_stopping_rounds': 100,
     'verbose': 1000,
-    'exp_name': 'LightGBM_02'
+    'exp_name': 'LightGBM_org_poisson'
 }
 
 save_model = True
@@ -25,20 +25,26 @@ save_model = True
 
 def main():
     # Load Data  #####################################
+    # From csv
     since = time.time()
     print('Data Loading...')
     # From Original
     # data_dir = '../data/input'
     # df = load_data(nrows=None, merge=True, data_dir=data_dir)
 
+    with open('../data/input/data.pkl', 'rb') as f:
+        df = pickle.load(f)
+    df = reduce_mem_usage(df)
+    df = preprocessing(df)
+
     # From Feather
-    target_features = [
-        'Weekday', 'Snap', 'Lag', 'SellPrice', 'Lag_RollMean',
-        'TimeFeatures', 'Event', 'Ids', 'Lag_SellPrice'
-    ]
-    target_path = [f'../features/{name}.ftr' for name in target_features]
-    df = load_from_feather(target_path)
-    df.sort_values(by='date', ascending=True, inplace=True)
+    # target_features = [
+    #     'Weekday', 'Snap', 'Lag', 'SellPrice', 'Lag_RollMean',
+    #     'TimeFeatures', 'Event', 'Ids', 'Lag_SellPrice'
+    # ]
+    # target_path = [f'../features/{name}.ftr' for name in target_features]
+    # df = load_from_feather(target_path)
+    # df.sort_values(by='date', ascending=True, inplace=True)
 
     # Model Training  #####################################
     lgbm = LGBMModel(df, **config)

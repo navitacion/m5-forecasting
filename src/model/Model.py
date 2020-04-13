@@ -27,6 +27,8 @@ class M5Model(metaclass=ABCMeta):
         train = df[df['part'] == 'train']
         # 価格がないものは販売していないため除外する
         train.dropna(subset=['sell_price'], inplace=True)
+        # 日付昇順に並び替える
+        train.sort_values(by='date', ascending=True, inplace=True)
 
         self.train_id = train['id'].values
         self.target = train['demand'].values

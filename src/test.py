@@ -7,6 +7,8 @@ import pickle
 # data_dir = '../data/input'
 # df = load_data(nrows=None, merge=True, data_dir=data_dir)
 #
-# with open('../data/input/data.pkl', 'wb') as f:
-#     pickle.dump(df, f)
+with open('../data/input/data.pkl', 'rb') as f:
+    df = pickle.load(f)
+
+print(df.columns)
 
