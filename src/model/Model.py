@@ -11,7 +11,7 @@ import lightgbm as lgb
 
 class M5Model(metaclass=ABCMeta):
     def __init__(self, df, features, params, cv, num_boost_round=1000,
-                 early_stopping_rounds=20, verbose=200, exp_name='Model'):
+                 early_stopping_rounds=20, verbose=200, exp_name='Model', use_data=None):
 
         self.params = params
         self.cv = cv
@@ -25,41 +25,41 @@ class M5Model(metaclass=ABCMeta):
             features = [c for c in df.columns if c not in ['id', 'part', 'date', 'demand', 'wm_yr_wk']]
 
         # Train Data
-        train = df[df['part'] == 'train']
+        self.X = df[df['part'] == 'train']
         # 価格がないものは販売していないため除外する
-        train.dropna(subset=['sell_price'], inplace=True)
+        self.X.dropna(subset=['sell_price'], inplace=True)
         # 日付昇順に並び替える
-        train.sort_values(by='date', ascending=True, inplace=True)
-        train.reset_index(drop=True, inplace=True)
+        self.X.sort_values(by='date', ascending=True, inplace=True)
+        self.X.reset_index(drop=True, inplace=True)
+        # 使用するデータ量を調整
+        _limit = int(len(self.X) * use_data)
+        self.X = self.X.iloc[_limit:]
 
         self.features = features
 
-        self.train_id = train['id'].values
-        self.target = train['demand'].values
-        self.X = train[self.features].values
-        del train
-        gc.collect()
+        self.train_id = self.X['id'].values
+        self.target = self.X['demand'].values
+        self.X = self.X[self.features].values
 
         # Validation
-        validation = df[df['part'] == 'test1']
-        self.val_id = validation['id'].values
-        self.val_date = validation['date'].values
-        self.vals = validation[self.features].values
-        del validation
-        gc.collect()
+        self.vals = df[df['part'] == 'test1']
+        self.val_id = self.vals['id'].values
+        self.val_date = self.vals['date'].values
+        self.vals = self.vals[self.features].values
 
         # Evaluation
-        evaluation = df[df['part'] == 'test2']
-        self.eval_id = evaluation['id'].values
-        self.eval_date = evaluation['date'].values
-        self.evals = evaluation[self.features].values
-        del evaluation
-        gc.collect()
+        self.evals = df[df['part'] == 'test2']
+        self.eval_id = self.evals['id'].values
+        self.eval_date = self.evals['date'].values
+        self.evals = self.evals[self.features].values
 
         self.importances = np.zeros((len(self.features)))
         self.importance_df = None
         self.best_score = 10000
         self.models = []
+
+        del df
+        gc.collect()
 
     @abstractmethod
     def train(self):

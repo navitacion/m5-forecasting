@@ -1,4 +1,4 @@
-import gc, os
+import gc, os, pickle
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
@@ -29,9 +29,9 @@ def preprocessing(df):
     gc.collect()
 
     # Lag  ############################################
-    new_colname = ['lag_7', 'lag_14', 'lag_21', 'lag_28', 'lag_30', 'lag_90']
-    for lag, lagcol in zip([7, 14, 21, 28, 30, 90], new_colname):
-        df[lagcol] = df[['id', 'demand']].groupby('id')['demand'].shift(lag)
+    lags = [7, 14, 21, 28, 30, 90]
+    for lag in lags:
+        df[f'lag_{lag}'] = df[['id', 'demand']].groupby('id')['demand'].shift(lag)
 
     df = reduce_mem_usage(df, verbose=False)
     gc.collect()
@@ -87,3 +87,13 @@ def preprocessing(df):
     gc.collect()
 
     return df
+
+
+if __name__ == '__main__':
+    with open('../data/input/data.pkl', 'rb') as f:
+        df = pickle.load(f)
+    df = reduce_mem_usage(df)
+    df = preprocessing(df)
+
+    with open(f"../models/prep_data.pkl", 'wb') as f:
+        pickle.dump(df, f)

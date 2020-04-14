@@ -16,6 +16,7 @@ config = {
     'num_boost_round': 200,
     'early_stopping_rounds': 100,
     'verbose': 20,
+    'use_data': 0.5,
     'exp_name': 'LightGBM_pre_reg_timeseries'
 }
 
@@ -32,12 +33,17 @@ def main():
     # data_dir = '../data/input'
     # df = load_data(nrows=None, merge=True, data_dir=data_dir)
 
-    with open('../data/input/data.pkl', 'rb') as f:
+    # with open('../data/input/data.pkl', 'rb') as f:
+    #     df = pickle.load(f)
+    # df = reduce_mem_usage(df)
+    # df = preprocessing(df)
+
+    with open('../data/input/prep_data.pkl', 'rb') as f:
         df = pickle.load(f)
-    df = reduce_mem_usage(df)
-    df = preprocessing(df)
     print(df.columns)
+    print(df.shape)
     print(df.head())
+
 
     # From Feather
     # target_features = [
