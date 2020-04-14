@@ -11,7 +11,7 @@ import lightgbm as lgb
 
 class M5Model(metaclass=ABCMeta):
     def __init__(self, df, features, params, cv, num_boost_round=1000,
-                 early_stopping_rounds=20, verbose=200, exp_name='Model', use_data=None):
+                 early_stopping_rounds=20, verbose=200, exp_name='Model', use_data=None, drop_f=None):
 
         self.params = params
         self.cv = cv
@@ -23,6 +23,9 @@ class M5Model(metaclass=ABCMeta):
         # featuresがNoneの場合はすべての変数を使う
         if features is None:
             features = [c for c in df.columns if c not in ['id', 'part', 'date', 'demand', 'wm_yr_wk']]
+        # drop_fで使用しない変数を指定する
+        if drop_f is not None:
+            features = [c for c in features if c not in drop_f]
 
         # Train Data
         self.X = df[df['part'] == 'train']
@@ -32,8 +35,10 @@ class M5Model(metaclass=ABCMeta):
         self.X.sort_values(by='date', ascending=True, inplace=True)
         self.X.reset_index(drop=True, inplace=True)
         # 使用するデータ量を調整
-        _limit = int(len(self.X) * use_data)
-        self.X = self.X.iloc[_limit:]
+        _limit = int(len(self.X) * (1 - use_data))
+        self.X = self.X.iloc[_limit:].reset_index(drop=True)
+
+        print(self.X.shape)
 
         self.features = features
 
@@ -60,6 +65,8 @@ class M5Model(metaclass=ABCMeta):
 
         del df
         gc.collect()
+
+        print(self.X.shape)
 
     @abstractmethod
     def train(self):

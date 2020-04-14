@@ -2,7 +2,7 @@ import glob, pickle, time, datetime
 import pandas as pd
 from sklearn.model_selection import KFold, TimeSeriesSplit
 
-from utils.preprocessing import preprocessing
+from utils.preprocessing import preprocessing, preprocessing_2
 from utils.utils import load_data, load_from_feather, reduce_mem_usage
 from utils.parameters import *
 from model.Model import LGBMModel
@@ -16,8 +16,8 @@ config = {
     'num_boost_round': 200,
     'early_stopping_rounds': 100,
     'verbose': 20,
-    'use_data': 0.5,
-    'exp_name': 'LightGBM_pre_reg_timeseries'
+    'use_data': 0.1,
+    'exp_name': 'LightGBM_pre_reg_timeseries_3'
 }
 
 save_model = True
@@ -29,30 +29,23 @@ def main():
     # From csv
     since = time.time()
     print('Data Loading...')
-    # From Original
+    # From Original  #################
     # data_dir = '../data/input'
     # df = load_data(nrows=None, merge=True, data_dir=data_dir)
 
     # with open('../data/input/data.pkl', 'rb') as f:
     #     df = pickle.load(f)
+    # df = preprocessing_2(df)
     # df = reduce_mem_usage(df)
-    # df = preprocessing(df)
 
-    with open('../data/input/prep_data.pkl', 'rb') as f:
-        df = pickle.load(f)
-    print(df.columns)
-    print(df.shape)
-    print(df.head())
-
-
-    # From Feather
-    # target_features = [
-    #     'Weekday', 'Snap', 'Lag', 'SellPrice', 'Lag_RollMean',
-    #     'TimeFeatures', 'Event', 'Ids', 'Lag_SellPrice'
-    # ]
-    # target_path = [f'../features/{name}.ftr' for name in target_features]
-    # df = load_from_feather(target_path)
-    # df.sort_values(by='date', ascending=True, inplace=True)
+    # From Feather  #################
+    target_features = [
+        'Snap', 'SellPrice', 'Lag_RollMean',
+        'TimeFeatures', 'Event', 'Ids', 'Lag_SellPrice'
+    ]
+    target_path = [f'../features/{name}.ftr' for name in target_features]
+    df = load_from_feather(target_path)
+    df = reduce_mem_usage(df)
 
     # Model Training  #####################################
     lgbm = LGBMModel(df, **config)

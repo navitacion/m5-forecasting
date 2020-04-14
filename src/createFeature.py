@@ -12,19 +12,9 @@ class SellPrice(Feature):
         self.df[self.new_colname[0]] = self.df[self.new_colname[0]].astype(np.float32)
 
 
-class Weekday(Feature):
-    '''
-    曜日を生成する
-    '''
-    def create_features(self):
-        self.new_colname = ['weekday']
-        self.df[self.new_colname[0]] = self.df['date'].dt.weekday
-
-
 class TimeFeatures(Feature):
-
     def create_features(self):
-        self.new_colname = ['year', 'month', 'quarter', 'week', 'day', 'dayofweek', 'dayofyear']
+        self.new_colname = ['year', 'month', 'week', 'day', 'dayofweek', 'dayofyear']
         for c in self.new_colname:
             self.df[c] = getattr(self.df['date'].dt, c).astype(np.int32)
 
@@ -52,6 +42,7 @@ class Lag(Feature):
     """
     7, 14, 21, 28, 30, 90日前の売上
     ['lag_7', 'lag_14', 'lag_21', 'lag_28']
+    リークを起こしているので使用不可
     """
     def create_features(self):
         self.new_colname = ['lag_7', 'lag_14', 'lag_21', 'lag_28', 'lag_30', 'lag_90']
@@ -65,15 +56,16 @@ class Lag_RollMean(Feature):
     """
     def create_features(self):
         self.new_colname = []
-        window = 28
+        windows = [7, 14, 21, 30, 90]
         periods = [7, 14, 21, 30, 90]
-        for period in periods:
-            self.df[f'rolling_{window}_mean_t{period}'] = self.df[['id', 'demand']].groupby('id')['demand']\
-                .transform(lambda x: x.shift(window).rolling(period).mean())
-            self.new_colname.append(f'rolling_{window}_mean_t{period}')
-            self.df[f'rolling_{window}_std_t{period}'] = self.df[['id', 'demand']].groupby('id')['demand'] \
-                .transform(lambda x: x.shift(window).rolling(period).std())
-            self.new_colname.append(f'rolling_{window}_std_t{period}')
+        for window in windows:
+            for period in periods:
+                self.df[f'rolling_{window}_mean_t{period}'] = self.df[['id', 'demand']].groupby('id')['demand']\
+                    .transform(lambda x: x.shift(window).rolling(period).mean()).astype(np.float32)
+                self.new_colname.append(f'rolling_{window}_mean_t{period}')
+                self.df[f'rolling_{window}_std_t{period}'] = self.df[['id', 'demand']].groupby('id')['demand'] \
+                    .transform(lambda x: x.shift(window).rolling(period).std()).astype(np.float32)
+                self.new_colname.append(f'rolling_{window}_std_t{period}')
 
 
 class Event(Feature):
@@ -106,7 +98,7 @@ class Lag_SellPrice(Feature):
         lags = [1, 2, 3, 7, 14]
         for lag in lags:
             col = f'sell_price_lag_{lag}'
-            self.df[col] = self.df[['id', 'sell_price']].groupby('id')['sell_price'].shift(lag)
+            self.df[col] = self.df[['id', 'sell_price']].groupby('id')['sell_price'].transform(lambda x: x.shift(lag))
             self.new_colname.append(col)
 
 
@@ -120,12 +112,10 @@ if __name__ == '__main__':
     with open('../data/input/data.pkl', 'rb') as f:
         df = pickle.load(f)
 
-    # SellPrice(df, dir=save_dir).run().save()
-    # Weekday(df, dir=save_dir).run().save()
-    # TimeFeatures(df, dir=save_dir).run().save()
-    # Snap(df, dir=save_dir).run().save()
-    # Lag(df, dir=save_dir).run().save()
-    # Lag_RollMean(df, dir=save_dir).run().save()
-    # Event(df, dir=save_dir).run().save()
-    # Ids(df, dir=save_dir).run().save()
+    SellPrice(df, dir=save_dir).run().save()
+    TimeFeatures(df, dir=save_dir).run().save()
+    Snap(df, dir=save_dir).run().save()
+    Lag_RollMean(df, dir=save_dir).run().save()
+    Event(df, dir=save_dir).run().save()
+    Ids(df, dir=save_dir).run().save()
     Lag_SellPrice(df, dir=save_dir).run().save()

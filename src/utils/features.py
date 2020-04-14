@@ -34,4 +34,5 @@ class Feature(metaclass=ABCMeta):
         cols = ['id', 'date', 'part', 'demand'] + self.new_colname
         self.df[cols].to_feather(str(self.save_path))
         self.df.drop(self.new_colname, axis=1, inplace=True)
+        del self.df
         gc.collect()
