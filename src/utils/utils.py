@@ -109,6 +109,7 @@ def load_data(nrows=None, merge=False, data_dir='../data/input'):
 
     return data
 
+
 def load_from_feather(target_path):
 
     """
