@@ -4,7 +4,7 @@ lgbm_params = {
     'boosting_type': 'gbdt',
     'objective': 'regression',
     'metric': 'rmse',
-    'learning_rate': 0.05,
+    'learning_rate': 0.01,
 }
 
 # https://www.kaggle.com/kneroma/m5-first-public-notebook-under-0-50

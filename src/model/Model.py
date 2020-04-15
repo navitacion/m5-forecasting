@@ -38,8 +38,6 @@ class M5Model(metaclass=ABCMeta):
         _limit = int(len(self.X) * (1 - use_data))
         self.X = self.X.iloc[_limit:].reset_index(drop=True)
 
-        print(self.X.shape)
-
         self.features = features
 
         self.train_id = self.X['id'].values
@@ -66,8 +64,6 @@ class M5Model(metaclass=ABCMeta):
         del df
         gc.collect()
 
-        print(self.X.shape)
-
     @abstractmethod
     def train(self):
         raise NotImplementedError
@@ -90,6 +86,7 @@ class LGBMModel(M5Model):
 
     def train(self):
         print('LightGBM Model Training...')
+        print('Train Data Shape: ', self.X.shape)
         self.score = 0.0
         for i, (trn_idx, val_idx) in enumerate(self.cv.split(self.X)):
             train_data = lgb.Dataset(self.X[trn_idx], label=self.target[trn_idx])

@@ -13,12 +13,14 @@ config = {
     'features': None,
     'params': lgbm_params,
     'cv': TimeSeriesSplit(n_splits=4),
-    'num_boost_round': 200,
-    'early_stopping_rounds': 100,
-    'verbose': 20,
-    'use_data': 0.1,
-    'exp_name': 'LightGBM_pre_reg_timeseries_3'
+    'num_boost_round': 20000,
+    'early_stopping_rounds': 300,
+    'verbose': 1000,
+    'use_data': 0.5,
+    'exp_name': 'LightGBM_pre_reg_timeseries_4'
 }
+
+print('LR=0.05-0.01 num_boost_round=200-20000 use_data=0.05-0.3')
 
 save_model = True
 print(config['exp_name'])
@@ -40,8 +42,8 @@ def main():
 
     # From Feather  #################
     target_features = [
-        'Snap', 'SellPrice', 'Lag_RollMean',
-        'TimeFeatures', 'Event', 'Ids', 'Lag_SellPrice'
+        'Snap', 'SellPrice', 'Lag_RollMean_7', 'Lag_RollMean_14', 'Lag_RollMean_21',
+        'TimeFeatures', 'Lag_SellPrice', 'Ids'
     ]
     target_path = [f'../features/{name}.ftr' for name in target_features]
     df = load_from_feather(target_path)
