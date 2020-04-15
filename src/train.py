@@ -1,29 +1,61 @@
-import glob, pickle, time, datetime
+import glob, pickle, time, datetime, argparse
 import pandas as pd
 from sklearn.model_selection import KFold, TimeSeriesSplit
 
-from utils.preprocessing import preprocessing, preprocessing_2
+from utils.preprocessing import preprocessing_1, preprocessing_0
 from utils.utils import load_data, load_from_feather, reduce_mem_usage
 from utils.parameters import *
 from model.Model import LGBMModel
 
 
+# Parser  ################################################################
+parser = argparse.ArgumentParser()
+parser.add_argument('-exp', '--expname')
+parser.add_argument('-obj', '--objective', default='regression', choices=['regression', 'poisson', 'tweedie'])
+parser.add_argument('-lr', '--learningrate', type=float, default=0.01)
+parser.add_argument('-cv', '--crossval', default='kfold')
+parser.add_argument('-nsplit', '--nsplit', type=int, default=4)
+parser.add_argument('-num', '--num_boost_round', type=int, default=1000)
+parser.add_argument('-early', '--early_stopping_rounds', type=int, default=10)
+parser.add_argument('-drate', '--data_rate', type=float, default=0.1)
+parser.add_argument('-prep', '--preprocessing', type=int, default=1)
+parser.add_argument('--postprocess', action='store_true')
+args = parser.parse_args()
+
+
+# Parameter  #############################################################
+params = {
+    'boosting_type': 'gbdt',
+    'objective': args.objective,
+    'metric': 'rmse',
+    'learning_rate': args.learningrate
+}
+
+# Cross Validation
+cv = {
+    'kfold': KFold(n_splits=args.nsplit),
+    'time': TimeSeriesSplit(n_splits=args.nsplit)
+}
+
+prep_dict = {
+    0: preprocessing_0,
+    1: preprocessing_1,
+}
+
+
 # Config  #####################################
 config = {
     'features': None,
-    'params': lgbm_params,
-    'cv': TimeSeriesSplit(n_splits=4),
-    'num_boost_round': 20000,
-    'early_stopping_rounds': 300,
-    'verbose': 1000,
-    'use_data': 0.5,
-    'exp_name': 'LightGBM_pre_reg_timeseries_4'
+    'params': params,
+    'cv': cv[args.crossval],
+    'num_boost_round': args.num_boost_round,
+    'early_stopping_rounds': args.early_stopping_rounds,
+    'verbose': 100,
+    'use_data': args.data_rate,
+    'exp_name': args.expname
 }
 
-print('LR=0.05-0.01 num_boost_round=200-20000 use_data=0.05-0.3')
-
 save_model = True
-print(config['exp_name'])
 
 
 def main():
@@ -35,19 +67,19 @@ def main():
     # data_dir = '../data/input'
     # df = load_data(nrows=None, merge=True, data_dir=data_dir)
 
-    # with open('../data/input/data.pkl', 'rb') as f:
-    #     df = pickle.load(f)
-    # df = preprocessing_2(df)
-    # df = reduce_mem_usage(df)
+    with open('../data/input/data.pkl', 'rb') as f:
+        df = pickle.load(f)
+    df = prep_dict[args.preprocessing](df)
+    df = reduce_mem_usage(df)
 
     # From Feather  #################
-    target_features = [
-        'Snap', 'SellPrice', 'Lag_RollMean_7', 'Lag_RollMean_14', 'Lag_RollMean_21',
-        'TimeFeatures', 'Lag_SellPrice', 'Ids'
-    ]
-    target_path = [f'../features/{name}.ftr' for name in target_features]
-    df = load_from_feather(target_path)
-    df = reduce_mem_usage(df)
+    # target_features = [
+    #     'Snap', 'SellPrice', 'Lag_RollMean_7', 'Lag_RollMean_14', 'Lag_RollMean_21',
+    #     'TimeFeatures', 'Lag_SellPrice', 'Ids'
+    # ]
+    # target_path = [f'../features/{name}.ftr' for name in target_features]
+    # df = load_from_feather(target_path)
+    # df = reduce_mem_usage(df)
 
     # Model Training  #####################################
     lgbm = LGBMModel(df, **config)
@@ -58,7 +90,7 @@ def main():
             pickle.dump(model, f)
 
     # Evaluate  #####################################
-    res = lgbm.evaluate()
+    res = lgbm.evaluate(postprocess=args.postprocess)
     sub_name = f"{config['exp_name']}_rmse_{lgbm.score:.3f}.csv"
     res.to_csv(f'../data/output/{sub_name}', index=False)
 

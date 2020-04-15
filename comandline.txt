@@ -1,0 +1,3 @@
+python train.py -exp lgbm_test -obj regression -lr 0.01 -cv time -nsplit 3 -num 20000 -early 200 -drate 0.5 -prep 1
+2.79088
+python train.py -exp lgbm_test_0 -obj regression -lr 0.01 -cv time -nsplit 3 -num 20000 -early 200 -drate 0.5 -prep 0

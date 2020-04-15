@@ -5,52 +5,7 @@ from sklearn.preprocessing import LabelEncoder
 from .utils import reduce_mem_usage
 
 
-def preprocessing(df):
-    # Date  ##########################################
-    new_colname = ['year', 'month', 'week', 'day', 'dayofweek', 'dayofyear']
-    for c in new_colname:
-        df[c] = getattr(df['date'].dt, c).astype(np.int16)
-
-    df.sort_values(by='date', ascending=True, inplace=True)
-    df.reset_index(drop=True, inplace=True)
-
-    # integrate 'snap' feature  ######################
-    df['snap'] = 0
-    df.loc[df[df['state_id'] == 'CA'].index, 'snap'] = df.loc[
-        df[df['state_id'] == 'CA'].index, 'snap_CA']
-
-    df.loc[df[df['state_id'] == 'TX'].index, 'snap'] = df.loc[
-        df[df['state_id'] == 'TX'].index, 'snap_TX']
-
-    df.loc[df[df['state_id'] == 'WI'].index, 'snap'] = df.loc[
-        df[df['state_id'] == 'WI'].index, 'snap_WI']
-
-    df = reduce_mem_usage(df)
-    gc.collect()
-
-    # Lag  ############################################
-    windows = [28]
-    periods = [7, 14, 21, 30, 90]
-    for window in windows:
-        for period in periods:
-            df[f'rolling_{window}_mean_t{period}'] = df[['id', 'demand']].groupby('id')['demand'] \
-                .transform(lambda x: x.shift(window).rolling(period).mean()).astype(np.float32)
-            df[f'rolling_{window}_std_t{period}'] = df[['id', 'demand']].groupby('id')['demand'] \
-                .transform(lambda x: x.shift(window).rolling(period).std()).astype(np.float32)
-
-    df = reduce_mem_usage(df, verbose=False)
-    gc.collect()
-
-    # Lag - Sell_price  ############################################
-    df['sell_price'] = df['sell_price'].astype(np.float32)
-    lags = [1, 2, 3, 7, 14]
-    for lag in lags:
-        col = f'sell_price_lag_{lag}'
-        df[col] = df[['id', 'sell_price']].groupby('id')['sell_price'].transform(lambda x: x.shift(lag))
-
-    df = reduce_mem_usage(df, verbose=False)
-    gc.collect()
-
+def preprocessing_0(df):
     # NaN  ############################################
     cols = {'event_name_1': 'Nodata',
             'event_type_1': 'Nodata',
@@ -83,7 +38,7 @@ def preprocessing(df):
     return df
 
 
-def preprocessing_2(df):
+def preprocessing_1(df):
     # Date  ##########################################
     new_colname = ['year', 'month', 'week', 'day', 'dayofweek', 'dayofyear']
     for c in new_colname:
@@ -107,24 +62,15 @@ def preprocessing_2(df):
     gc.collect()
 
     # Lag  ############################################
-    windows = [7, 14, 21, 30]
-    periods = [7, 14, 21, 30, 90]
+    windows = [7, 28]
+    periods = [7, 28]
     for window in windows:
+        df[f'rolling_{window}'] = df[['id', 'demand']].groupby('id')['demand'].shift(window)
         for period in periods:
             df[f'rolling_{window}_mean_t{period}'] = df[['id', 'demand']].groupby('id')['demand'] \
                 .transform(lambda x: x.shift(window).rolling(period).mean()).astype(np.float32)
             df[f'rolling_{window}_std_t{period}'] = df[['id', 'demand']].groupby('id')['demand'] \
                 .transform(lambda x: x.shift(window).rolling(period).std()).astype(np.float32)
-
-    df = reduce_mem_usage(df, verbose=False)
-    gc.collect()
-
-    # Lag - Sell_price  ############################################
-    df['sell_price'] = df['sell_price'].astype(np.float32)
-    lags = [1, 2, 3, 7, 14]
-    for lag in lags:
-        col = f'sell_price_lag_{lag}'
-        df[col] = df[['id', 'sell_price']].groupby('id')['sell_price'].transform(lambda x: x.shift(lag))
 
     df = reduce_mem_usage(df, verbose=False)
     gc.collect()
@@ -165,7 +111,7 @@ if __name__ == '__main__':
     with open('../data/input/data.pkl', 'rb') as f:
         df = pickle.load(f)
     df = reduce_mem_usage(df)
-    df = preprocessing(df)
+    df = preprocessing_1(df)
 
     with open(f"../data/input/prep_data.pkl", 'wb') as f:
         pickle.dump(df, f)

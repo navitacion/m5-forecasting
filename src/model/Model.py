@@ -27,6 +27,8 @@ class M5Model(metaclass=ABCMeta):
         if drop_f is not None:
             features = [c for c in features if c not in drop_f]
 
+        self.features = features
+
         # Train Data
         self.X = df[df['part'] == 'train']
         # 価格がないものは販売していないため除外する
@@ -37,8 +39,6 @@ class M5Model(metaclass=ABCMeta):
         # 使用するデータ量を調整
         _limit = int(len(self.X) * (1 - use_data))
         self.X = self.X.iloc[_limit:].reset_index(drop=True)
-
-        self.features = features
 
         self.train_id = self.X['id'].values
         self.target = self.X['demand'].values
@@ -119,7 +119,7 @@ class LGBMModel(M5Model):
 
         return self.models, self.importance_df
 
-    def evaluate(self):
+    def evaluate(self, postprocess=False):
         assert len(self.models) != 0, 'Model is not trained...'
         print('Evaluate...')
 
@@ -152,6 +152,18 @@ class LGBMModel(M5Model):
         res_eval.columns = ['id'] + F_list
 
         res = pd.concat([res_val, res_eval], axis=0)
-        print('FINISH')
 
-        return res
+        if postprocess:
+            alphas = [1.028, 1.023, 1.018]
+            weights = [1 / len(alphas)] * len(alphas)
+            _res = res.copy()
+            for f in F_list:
+                _res[f] = 0
+
+                for alpha, weight in zip(alphas, weights):
+                    _res[f] += alpha * weight * res[f]
+
+            return _res
+
+        else:
+            return res
