@@ -1,3 +1,33 @@
-python train.py -exp lgbm_test -obj regression -lr 0.01 -cv time -nsplit 3 -num 20000 -early 200 -drate 0.5 -prep 1
-2.79088
+# Reg TimeSeries
+
 python train.py -exp lgbm_test_0 -obj regression -lr 0.01 -cv time -nsplit 3 -num 20000 -early 200 -drate 0.5 -prep 0
+CV: 2.694   PB: 1.44304
+
+python train.py -exp lgbm_test_1 -obj regression -lr 0.01 -cv time -nsplit 3 -num 20000 -early 200 -drate 0.5 -prep 1
+CV: 2.333   PB: 0.76283
+
+
+# Reg CV=None
+
+# 不要な変数を減らしてデータを増やす
+python train.py -exp lgbm_reg_none_1 -obj regression -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.6 -prep 1
+CV: 2.283   PB: 0.73016
+python train.py -exp lgbm_reg_none_2 -obj regression -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.7 -prep 1
+CV: 2.279   PB: 0.75635
+python train.py -exp lgbm_reg_none_3 -obj regression -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.8 -prep 1
+CV:    PB: 
+
+
+# Reg KFold
+
+python train.py -exp lgbm_reg_kfold_1 -obj regression -lr 0.01 -cv kfold -nsplit 3 -num 20000 -early 200 -drate 0.5 -prep 1
+CV: 2.341
+
+
+
+# poisson
+
+python train.py -exp lgbm_poisson_1 -obj poisson -lr 0.01 -cv time -nsplit 3 -num 20000 -early 200 -drate 0.5 -prep 1
+CV: 2.341   PB: 0.77538
+
+

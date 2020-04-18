@@ -1,99 +1,57 @@
-import gc, os, pickle
+import gc, os, pickle, datetime
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from utils.utils import reduce_mem_usage
 
+PRICE_DTYPES = {"store_id": "category", "item_id": "category", "wm_yr_wk": "int16","sell_price":"float32" }
+CAL_DTYPES={"event_name_1": "category", "event_name_2": "category", "event_type_1": "category",
+         "event_type_2": "category", "weekday": "category", 'wm_yr_wk': 'int16', "wday": "int16",
+        "month": "int16", "year": "int16", "snap_CA": "float32", 'snap_TX': 'float32', 'snap_WI': 'float32' }
 
-def preprocessing(df):
-    # Date  ##########################################
-    new_colname = ['year', 'month', 'quarter', 'week', 'day', 'dayofweek', 'dayofyear', 'weekday']
-    for c in new_colname:
-        df[c] = getattr(df['date'].dt, c).astype(np.int32)
+h = 28
+max_lags = 70
+tr_last = 1913
+fday = datetime.datetime(2016, 4, 25)
 
-    df.sort_values(by='date', ascending=True, inplace=True)
-    df.reset_index(drop=True, inplace=True)
+def create_dt(is_train=True, nrows=None, first_day=1200):
+    prices = pd.read_csv("..data/input/sell_prices.csv", dtype=PRICE_DTYPES)
+    for col, col_dtype in PRICE_DTYPES.items():
+        if col_dtype == "category":
+            prices[col] = prices[col].cat.codes.astype("int16")
+            prices[col] -= prices[col].min()
 
-    # integrate 'snap' feature  ######################
-    df['snap'] = 0
-    df.loc[df[df['state_id'] == 'CA'].index, 'snap'] = df.loc[
-        df[df['state_id'] == 'CA'].index, 'snap_CA']
+    cal = pd.read_csv("../data/input/calendar.csv", dtype=CAL_DTYPES)
+    cal["date"] = pd.to_datetime(cal["date"])
+    for col, col_dtype in CAL_DTYPES.items():
+        if col_dtype == "category":
+            cal[col] = cal[col].cat.codes.astype("int16")
+            cal[col] -= cal[col].min()
 
-    df.loc[df[df['state_id'] == 'TX'].index, 'snap'] = df.loc[
-        df[df['state_id'] == 'TX'].index, 'snap_TX']
+    start_day = max(1 if is_train else tr_last - max_lags, first_day)
+    numcols = [f"d_{day}" for day in range(start_day, tr_last + 1)]
+    catcols = ['id', 'item_id', 'dept_id', 'store_id', 'cat_id', 'state_id']
+    dtype = {numcol: "float32" for numcol in numcols}
+    dtype.update({col: "category" for col in catcols if col != "id"})
+    dt = pd.read_csv("../data/input/sales_train_validation.csv",
+                     nrows=nrows, usecols=catcols + numcols, dtype=dtype)
 
-    df.loc[df[df['state_id'] == 'WI'].index, 'snap'] = df.loc[
-        df[df['state_id'] == 'WI'].index, 'snap_WI']
+    for col in catcols:
+        if col != "id":
+            dt[col] = dt[col].cat.codes.astype("int16")
+            dt[col] -= dt[col].min()
 
-    df = reduce_mem_usage(df)
-    gc.collect()
+    if not is_train:
+        for day in range(tr_last + 1, tr_last + 28 + 1):
+            dt[f"d_{day}"] = np.nan
 
-    # Lag  ############################################
-    lags = [7, 14, 21, 28, 30, 90]
-    for lag in lags:
-        df[f'lag_{lag}'] = df[['id', 'demand']].groupby('id')['demand'].shift(lag)
+    dt = pd.melt(dt,
+                 id_vars=catcols,
+                 value_vars=[col for col in dt.columns if col.startswith("d_")],
+                 var_name="d",
+                 value_name="sales")
 
-    df = reduce_mem_usage(df, verbose=False)
-    gc.collect()
+    dt = dt.merge(cal, on="d", copy=False)
+    dt = dt.merge(prices, on=["store_id", "item_id", "wm_yr_wk"], copy=False)
 
-    window = 28
-    periods = [7, 14, 21, 30, 90]
-    for period in periods:
-        df[f'rolling_{window}_mean_t{period}'] = df[['id', 'demand']].groupby('id')['demand'] \
-            .transform(lambda x: x.shift(window).rolling(period).mean())
-        df[f'rolling_{window}_std_t{period}'] = df[['id', 'demand']].groupby('id')['demand'] \
-            .transform(lambda x: x.shift(window).rolling(period).std())
-
-    df = reduce_mem_usage(df, verbose=False)
-    gc.collect()
-
-    # Lag - Sell_price  ############################################
-    df['sell_price'] = df['sell_price'].astype(np.float32)
-    lags = [1, 2, 3, 7, 14]
-    for lag in lags:
-        col = f'sell_price_lag_{lag}'
-        df[col] = df[['id', 'sell_price']].groupby('id')['sell_price'].shift(lag)
-
-    df = reduce_mem_usage(df, verbose=False)
-    gc.collect()
-
-    # NaN  ############################################
-    cols = {'event_name_1': 'Nodata',
-            'event_type_1': 'Nodata',
-            'event_name_2': 'Nodata',
-            'event_type_2': 'Nodata'}
-    df.fillna(cols, inplace=True)
-
-    # LabelEncoder  ####################################
-    lbl_cols = ['event_name_1', 'event_type_1', 'event_name_2', 'event_type_2',
-                'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id']
-    for c in lbl_cols:
-        lbl = LabelEncoder()
-        df[c] = lbl.fit_transform(df[c].values)
-
-    df = reduce_mem_usage(df, verbose=False)
-    gc.collect()
-
-    # Dtypes  ##########################################
-    cat_cols = ['event_name_1', 'event_type_1', 'event_name_2', 'event_type_2',
-                'snap_CA', 'snap_TX', 'snap_WI', 'weekday', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id']
-    for c in cat_cols:
-        try:
-            df[c] = df[c].astype('category')
-        except:
-            pass
-
-    df = reduce_mem_usage(df, verbose=False)
-    gc.collect()
-
-    return df
-
-
-if __name__ == '__main__':
-    with open('../data/input/data.pkl', 'rb') as f:
-        df = pickle.load(f)
-    df = reduce_mem_usage(df)
-    df = preprocessing(df)
-
-    with open(f"../models/prep_data.pkl", 'wb') as f:
-        pickle.dump(df, f)
+    return dt

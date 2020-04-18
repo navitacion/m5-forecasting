@@ -28,11 +28,13 @@ class M5Model(metaclass=ABCMeta):
             features = [c for c in features if c not in drop_f]
 
         self.features = features
+        self.cat_features = [c for c in df.select_dtypes('category').columns if c not in self.features]
+        self.cat_features = [c for c in self.cat_features if c not in drop_f]
 
         # Train Data
         self.X = df[df['part'] == 'train']
         # 価格がないものは販売していないため除外する
-        self.X.dropna(subset=['sell_price'], inplace=True)
+        self.X.dropna(inplace=True)
         # 日付昇順に並び替える
         self.X.sort_values(by='date', ascending=True, inplace=True)
         self.X.reset_index(drop=True, inplace=True)
@@ -88,27 +90,59 @@ class LGBMModel(M5Model):
         print('LightGBM Model Training...')
         print('Train Data Shape: ', self.X.shape)
         self.score = 0.0
-        for i, (trn_idx, val_idx) in enumerate(self.cv.split(self.X)):
-            train_data = lgb.Dataset(self.X[trn_idx], label=self.target[trn_idx])
-            valid_data = lgb.Dataset(self.X[val_idx], label=self.target[val_idx], reference=train_data)
+
+        # クロスバリデーションを用いる場合
+        if self.cv != 'none':
+            for i, (trn_idx, val_idx) in enumerate(self.cv.split(self.X)):
+                train_data = lgb.Dataset(self.X[trn_idx], label=self.target[trn_idx])
+                valid_data = lgb.Dataset(self.X[val_idx], label=self.target[val_idx],
+                                         reference=train_data)
+
+                model = lgb.train(self.params,
+                                  train_data,
+                                  valid_sets=[valid_data, train_data],
+                                  valid_names=['eval', 'train'],
+                                  num_boost_round=self.num_boost_round,
+                                  early_stopping_rounds=self.early_stopping,
+                                  verbose_eval=self.verbose
+                                  )
+                self.models.append(model)
+
+                self.importances += model.feature_importance() / self.cv.get_n_splits()
+
+                pred = model.predict(self.X[val_idx], num_iteration=model.best_iteration)
+                rmse = np.sqrt(mean_squared_error(y_true=self.target[val_idx], y_pred=pred))
+                self.score += rmse / self.cv.get_n_splits()
+                print(f'{i + 1} Fold  RMSE: {rmse:.3f}')
+                print('#' * 30)
+                del model, train_data, valid_data, pred, rmse
+                gc.collect()
+        # クロスバリデーションをしない場合
+        else:
+            dev_idx = int(len(self.X) * 0.8)
+            train_data = lgb.Dataset(self.X[:dev_idx], label=self.target[:dev_idx])
+            valid_data = lgb.Dataset(self.X[dev_idx:], label=self.target[dev_idx:],
+                                     reference=train_data)
 
             model = lgb.train(self.params,
                               train_data,
-                              valid_sets=[train_data, valid_data],
-                              valid_names=['train', 'eval'],
+                              valid_sets=[valid_data, train_data],
+                              valid_names=['eval', 'train'],
                               num_boost_round=self.num_boost_round,
                               early_stopping_rounds=self.early_stopping,
                               verbose_eval=self.verbose
                               )
             self.models.append(model)
 
-            self.importances += model.feature_importance() / self.cv.get_n_splits()
+            self.importances += model.feature_importance()
 
-            pred = model.predict(self.X[val_idx], num_iteration=model.best_iteration)
-            rmse = np.sqrt(mean_squared_error(y_true=self.target[val_idx], y_pred=pred))
-            self.score += rmse / self.cv.get_n_splits()
-            print(f'{i + 1} Fold  RMSE: {rmse:.3f}')
+            pred = model.predict(self.X[dev_idx:], num_iteration=model.best_iteration)
+            rmse = np.sqrt(mean_squared_error(y_true=self.target[dev_idx:], y_pred=pred))
+            self.score += rmse
+            print(f'RMSE: {rmse:.3f}')
             print('#' * 30)
+            del model, train_data, valid_data, pred, rmse
+            gc.collect()
 
         print(f'All Fold RMSE: {self.score:.3f}')
 

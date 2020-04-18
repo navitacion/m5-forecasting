@@ -40,79 +40,23 @@ class Snap(Feature):
 
 class Lag(Feature):
     """
-    7, 14, 21, 28, 30, 90日前の売上
-    ['lag_7', 'lag_14', 'lag_21', 'lag_28']
-    リークを起こしているので使用不可
+    28, 30, 90日前の売上
+    lagは28以上に設定すること
     """
     def create_features(self):
-        self.new_colname = ['lag_7', 'lag_14', 'lag_21', 'lag_28', 'lag_30', 'lag_90']
-        for lag, lagcol in zip([7, 14, 21, 28, 30, 90], self.new_colname):
+        self.new_colname = ['lag_28', 'lag_30', 'lag_90']
+        for lag, lagcol in zip([28, 30, 90], self.new_colname):
             self.df[lagcol] = self.df[['id', 'demand']].groupby('id')['demand'].shift(lag)
 
 
-class Lag_RollMean_3(Feature):
+class Lag_RollMean_28(Feature):
     """
     lagと移動平均を組み合わせ
-    windowサイズを狭くするとどうもリークが起きるっぽい
-    Score: 3.30497
+    lagは28以上に設定すること
     """
     def create_features(self):
         self.new_colname = []
-        windows = [3]
-        periods = [7, 14, 21, 30, 90]
-        for window in windows:
-            for period in periods:
-                self.df[f'rolling_{window}_mean_t{period}'] = self.df[['id', 'demand']].groupby('id')['demand']\
-                    .transform(lambda x: x.shift(window).rolling(period).mean()).astype(np.float32)
-                self.new_colname.append(f'rolling_{window}_mean_t{period}')
-                self.df[f'rolling_{window}_std_t{period}'] = self.df[['id', 'demand']].groupby('id')['demand'] \
-                    .transform(lambda x: x.shift(window).rolling(period).std()).astype(np.float32)
-                self.new_colname.append(f'rolling_{window}_std_t{period}')
-
-
-class Lag_RollMean_7(Feature):
-    """
-    lagと移動平均を組み合わせ
-    """
-    def create_features(self):
-        self.new_colname = []
-        windows = [7]
-        periods = [7, 14, 21, 30, 90]
-        for window in windows:
-            for period in periods:
-                self.df[f'rolling_{window}_mean_t{period}'] = self.df[['id', 'demand']].groupby('id')['demand']\
-                    .transform(lambda x: x.shift(window).rolling(period).mean()).astype(np.float32)
-                self.new_colname.append(f'rolling_{window}_mean_t{period}')
-                self.df[f'rolling_{window}_std_t{period}'] = self.df[['id', 'demand']].groupby('id')['demand'] \
-                    .transform(lambda x: x.shift(window).rolling(period).std()).astype(np.float32)
-                self.new_colname.append(f'rolling_{window}_std_t{period}')
-
-
-class Lag_RollMean_14(Feature):
-    """
-    lagと移動平均を組み合わせ
-    """
-    def create_features(self):
-        self.new_colname = []
-        windows = [14]
-        periods = [7, 14, 21, 30, 90]
-        for window in windows:
-            for period in periods:
-                self.df[f'rolling_{window}_mean_t{period}'] = self.df[['id', 'demand']].groupby('id')['demand']\
-                    .transform(lambda x: x.shift(window).rolling(period).mean()).astype(np.float32)
-                self.new_colname.append(f'rolling_{window}_mean_t{period}')
-                self.df[f'rolling_{window}_std_t{period}'] = self.df[['id', 'demand']].groupby('id')['demand'] \
-                    .transform(lambda x: x.shift(window).rolling(period).std()).astype(np.float32)
-                self.new_colname.append(f'rolling_{window}_std_t{period}')
-
-
-class Lag_RollMean_21(Feature):
-    """
-    lagと移動平均を組み合わせ
-    """
-    def create_features(self):
-        self.new_colname = []
-        windows = [21]
+        windows = [28]
         periods = [7, 14, 21, 30, 90]
         for window in windows:
             for period in periods:
@@ -151,7 +95,7 @@ class Lag_SellPrice(Feature):
     def create_features(self):
         self.new_colname =[]
         self.df['sell_price'] = self.df['sell_price'].astype(np.float32)
-        lags = [1, 7, 30]
+        lags = [28, 30, 90]
         for lag in lags:
             col = f'sell_price_lag_{lag}'
             self.df[col] = self.df[['id', 'sell_price']].groupby('id')['sell_price'].transform(lambda x: x.shift(lag))
@@ -171,10 +115,8 @@ if __name__ == '__main__':
     # SellPrice(df, dir=save_dir).run().save()
     # TimeFeatures(df, dir=save_dir).run().save()
     # Snap(df, dir=save_dir).run().save()
-    Lag_RollMean_3(df, dir=save_dir).run().save()
-    # Lag_RollMean_7(df, dir=save_dir).run().save()
-    # Lag_RollMean_14(df, dir=save_dir).run().save()
-    # Lag_RollMean_21(df, dir=save_dir).run().save()
+    Lag(df, dir=save_dir).run().save()
+    # Lag_RollMean_28(df, dir=save_dir).run().save()
     # Event(df, dir=save_dir).run().save()
     # Ids(df, dir=save_dir).run().save()
-    # Lag_SellPrice(df, dir=save_dir).run().save()
+    Lag_SellPrice(df, dir=save_dir).run().save()

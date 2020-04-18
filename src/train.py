@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-exp', '--expname')
 parser.add_argument('-obj', '--objective', default='regression', choices=['regression', 'poisson', 'tweedie'])
 parser.add_argument('-lr', '--learningrate', type=float, default=0.01)
-parser.add_argument('-cv', '--crossval', default='kfold')
+parser.add_argument('-cv', '--crossval', default='kfold', choices=['kfold', 'time', 'none'])
 parser.add_argument('-nsplit', '--nsplit', type=int, default=4)
 parser.add_argument('-num', '--num_boost_round', type=int, default=1000)
 parser.add_argument('-early', '--early_stopping_rounds', type=int, default=10)
@@ -34,7 +34,8 @@ params = {
 # Cross Validation
 cv = {
     'kfold': KFold(n_splits=args.nsplit),
-    'time': TimeSeriesSplit(n_splits=args.nsplit)
+    'time': TimeSeriesSplit(n_splits=args.nsplit),
+    'none': 'none'
 }
 
 prep_dict = {
@@ -52,7 +53,9 @@ config = {
     'early_stopping_rounds': args.early_stopping_rounds,
     'verbose': 100,
     'use_data': args.data_rate,
-    'exp_name': args.expname
+    'exp_name': args.expname,
+    'drop_f': ['snap_CA', 'snap_WI', 'snap_TX', 'cat_id', 'state_id', 'dept_id',
+               'event_name_1', 'event_type_1', 'event_name_2', 'event_type_2']
 }
 
 save_model = True
@@ -67,14 +70,17 @@ def main():
     # data_dir = '../data/input'
     # df = load_data(nrows=None, merge=True, data_dir=data_dir)
 
+    # From Pickle  ###################
     with open('../data/input/data.pkl', 'rb') as f:
         df = pickle.load(f)
+
+    # Preprocessing
     df = prep_dict[args.preprocessing](df)
     df = reduce_mem_usage(df)
 
     # From Feather  #################
     # target_features = [
-    #     'Snap', 'SellPrice', 'Lag_RollMean_7', 'Lag_RollMean_14', 'Lag_RollMean_21',
+    #     'Snap', 'SellPrice', 'Lag_RollMean_28',
     #     'TimeFeatures', 'Lag_SellPrice', 'Ids'
     # ]
     # target_path = [f'../features/{name}.ftr' for name in target_features]
