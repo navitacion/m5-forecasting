@@ -11,23 +11,36 @@ CV: 2.333   PB: 0.76283
 
 # 不要な変数を減らしてデータを増やす
 python train.py -exp lgbm_reg_none_1 -obj regression -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.6 -prep 1
+target_features = [
+        'Snap', 'SellPrice', 'Lag_RollMean_28', 'Lag',
+        'TimeFeatures', 'Lag_SellPrice', 'Ids'
+    ]
 CV: 2.283   PB: 0.73016
+
+
 python train.py -exp lgbm_reg_none_2 -obj regression -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.7 -prep 1
+target_features = [
+        'Snap', 'SellPrice', 'Lag_RollMean_28', 'Lag',
+        'TimeFeatures', 'Lag_SellPrice', 'Ids'
+    ]
 CV: 2.279   PB: 0.75635
-python train.py -exp lgbm_reg_none_3 -obj regression -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.8 -prep 1
-CV:    PB: 
+drate > 0.7だとメモリエラー
 
-
-# Reg KFold
-
-python train.py -exp lgbm_reg_kfold_1 -obj regression -lr 0.01 -cv kfold -nsplit 3 -num 20000 -early 200 -drate 0.5 -prep 1
-CV: 2.341
 
 
 
 # poisson
 
-python train.py -exp lgbm_poisson_1 -obj poisson -lr 0.01 -cv time -nsplit 3 -num 20000 -early 200 -drate 0.5 -prep 1
-CV: 2.341   PB: 0.77538
+python train.py -exp lgbm_poisson_2 -obj poisson -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.7 -prep 1
+target_features = [
+        'Snap', 'SellPrice', 'Lag_RollMean_28', 'Lag',
+        'TimeFeatures', 'Lag_SellPrice', 'Ids'
+    ]
+CV: 2.285   PB: 0.69839
 
-
+python train.py -exp lgbm_poisson_3 -obj poisson -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.6 -prep 1
+target_features = [
+        'Snap', 'SellPrice', 'Lag_RollMean_28', 'Lag', 'Lag_RollMean_45',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+CV: 2.263   PB: 0.69074

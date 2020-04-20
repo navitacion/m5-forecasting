@@ -34,7 +34,7 @@ class M5Model(metaclass=ABCMeta):
         # Train Data
         self.X = df[df['part'] == 'train']
         # 価格がないものは販売していないため除外する
-        self.X.dropna(inplace=True)
+        self.X.dropna(subset=['sell_price'], inplace=True)
         # 日付昇順に並び替える
         self.X.sort_values(by='date', ascending=True, inplace=True)
         self.X.reset_index(drop=True, inplace=True)

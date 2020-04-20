@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.model_selection import KFold, TimeSeriesSplit
 
 from utils.preprocessing import preprocessing_1, preprocessing_0
-from utils.utils import load_data, load_from_feather, reduce_mem_usage
+from utils.utils import load_data, load_from_feather, reduce_mem_usage, seed_everything
 from utils.parameters import *
 from model.Model import LGBMModel
 
@@ -13,6 +13,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-exp', '--expname')
 parser.add_argument('-obj', '--objective', default='regression', choices=['regression', 'poisson', 'tweedie'])
 parser.add_argument('-lr', '--learningrate', type=float, default=0.01)
+parser.add_argument('-subs', '--subsample', type=float, default=1.0)
+parser.add_argument('-featfreq', '--featurefraction', type=float, default=1.0)
 parser.add_argument('-cv', '--crossval', default='kfold', choices=['kfold', 'time', 'none'])
 parser.add_argument('-nsplit', '--nsplit', type=int, default=4)
 parser.add_argument('-num', '--num_boost_round', type=int, default=1000)
@@ -28,8 +30,16 @@ params = {
     'boosting_type': 'gbdt',
     'objective': args.objective,
     'metric': 'rmse',
-    'learning_rate': args.learningrate
+    'learning_rate': args.learningrate,
+    'subsample': args.subsample,
+    'subsample_freq': 1,
+    'feature_fraction': args.featurefraction,
+    'seed': 0
+
 }
+
+if args.objective == 'tweedie':
+    params.update({'tweedie_variance_power': 1.1})
 
 # Cross Validation
 cv = {
@@ -62,6 +72,7 @@ save_model = True
 
 
 def main():
+    seed_everything(0)
     # Load Data  #####################################
     # From csv
     since = time.time()
@@ -71,21 +82,22 @@ def main():
     # df = load_data(nrows=None, merge=True, data_dir=data_dir)
 
     # From Pickle  ###################
-    with open('../data/input/data.pkl', 'rb') as f:
-        df = pickle.load(f)
+    # with open('../data/input/data.pkl', 'rb') as f:
+    #     df = pickle.load(f)
 
     # Preprocessing
-    df = prep_dict[args.preprocessing](df)
-    df = reduce_mem_usage(df)
+    # df = prep_dict[args.preprocessing](df)
+    # df = reduce_mem_usage(df)
 
     # From Feather  #################
-    # target_features = [
-    #     'Snap', 'SellPrice', 'Lag_RollMean_28',
-    #     'TimeFeatures', 'Lag_SellPrice', 'Ids'
-    # ]
-    # target_path = [f'../features/{name}.ftr' for name in target_features]
-    # df = load_from_feather(target_path)
-    # df = reduce_mem_usage(df)
+    target_features = [
+        'Snap', 'SellPrice', 'Lag_RollMean_28', 'Lag',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event',
+        'Price_fe'
+    ]
+
+    target_path = [f'../features/{name}.ftr' for name in target_features]
+    df = load_from_feather(target_path)
 
     # Model Training  #####################################
     lgbm = LGBMModel(df, **config)

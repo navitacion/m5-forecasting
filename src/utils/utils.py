@@ -1,7 +1,11 @@
-import gc, os, glob
+import gc, os, glob, random
 import numpy as np
 import pandas as pd
 
+
+def seed_everything(seed=0):
+    random.seed(seed)
+    np.random.seed(seed)
 
 def reduce_mem_usage(df, verbose=True):
     numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
@@ -124,7 +128,7 @@ def load_from_feather(target_path):
 
     for i, path in enumerate(target_path):
         d = pd.read_feather(path)
-        d = reduce_mem_usage(d)
+        d = reduce_mem_usage(d, verbose=False)
         if i == 0:
             df = d
         else:
