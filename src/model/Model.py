@@ -1,4 +1,4 @@
-import gc
+import gc, os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,6 +7,8 @@ import seaborn as sns
 from abc import ABCMeta, abstractmethod
 from sklearn.metrics import mean_squared_error
 import lightgbm as lgb
+from .costFunc import custom_asymmetric_train, custom_asymmetric_valid
+from .WRMSSE import WRMSSEEvaluator
 
 
 class M5Model(metaclass=ABCMeta):
@@ -58,6 +60,11 @@ class M5Model(metaclass=ABCMeta):
         self.eval_date = self.evals['date'].values
         self.evals = self.evals[self.features].values
 
+        # WRMSSEのためのvalデータ
+        self.X_val_wrmsse = df[(df['date'] > '2016-03-27') & (df['date'] <= '2016-04-24')]
+        self.y_val_wrmsse = self.X_val_wrmsse['demand'].values
+        self.X_val_wrmsse = self.X_val_wrmsse[self.features]
+
         self.importances = np.zeros((len(self.features)))
         self.importance_df = None
         self.best_score = 10000
@@ -83,6 +90,29 @@ class M5Model(metaclass=ABCMeta):
         if savefig:
             plt.savefig(f'../fig/{self.exp_name}.png')
 
+    def get_wrmsse(self, train_fold_df, valid_fold_df, calendar, sell_prices):
+        """
+        WRMSSEの計算
+        Parameters
+        ----------
+        train_fold_df: 元の学習データ
+        valid_fold_df
+        calendar
+        sell_prices
+
+        Returns WRMMSE
+        -------
+
+        """
+        self.X_val_wrmsse = pd.pivot(self.X_val_wrmsse, index='id', columns='date', values='demand').reset_index()
+        self.X_val_wrmsse.columns = ['id'] + ['d_' + str(i) for i in range(1886, 1914)]
+        x_val = train_fold_df[['id']].merge(self.X_val_wrmsse, on='id')
+        x_val.drop('id', axis=1, inplace=True)
+        evaluator = WRMSSEEvaluator(train_fold_df, valid_fold_df, calendar, sell_prices)
+        score = evaluator.score(x_val)
+        return score
+
+
 
 class LGBMModel(M5Model):
 
@@ -93,10 +123,12 @@ class LGBMModel(M5Model):
 
         # クロスバリデーションを用いる場合
         if self.cv != 'none':
+            val_pred = np.zeros(len(self.X_val_wrmsse))
             for i, (trn_idx, val_idx) in enumerate(self.cv.split(self.X)):
-                train_data = lgb.Dataset(self.X[trn_idx], label=self.target[trn_idx])
+                train_data = lgb.Dataset(self.X[trn_idx], label=self.target[trn_idx],
+                                         categorical_feature=self.cat_features)
                 valid_data = lgb.Dataset(self.X[val_idx], label=self.target[val_idx],
-                                         reference=train_data)
+                                         categorical_feature=self.cat_features, reference=train_data)
 
                 model = lgb.train(self.params,
                                   train_data,
@@ -104,7 +136,9 @@ class LGBMModel(M5Model):
                                   valid_names=['eval', 'train'],
                                   num_boost_round=self.num_boost_round,
                                   early_stopping_rounds=self.early_stopping,
-                                  verbose_eval=self.verbose
+                                  verbose_eval=self.verbose,
+                                  fobj=custom_asymmetric_train,
+                                  feval=custom_asymmetric_valid
                                   )
                 self.models.append(model)
 
@@ -115,6 +149,8 @@ class LGBMModel(M5Model):
                 self.score += rmse / self.cv.get_n_splits()
                 print(f'{i + 1} Fold  RMSE: {rmse:.3f}')
                 print('#' * 30)
+
+                val_pred += model.predict(self.X_val_wrmsse, num_iteration=model.best_iteration) / self.cv.get_n_splits()
                 del model, train_data, valid_data, pred, rmse
                 gc.collect()
         # クロスバリデーションをしない場合
@@ -130,7 +166,9 @@ class LGBMModel(M5Model):
                               valid_names=['eval', 'train'],
                               num_boost_round=self.num_boost_round,
                               early_stopping_rounds=self.early_stopping,
-                              verbose_eval=self.verbose
+                              verbose_eval=self.verbose,
+                              fobj=custom_asymmetric_train,
+                              feval=custom_asymmetric_valid
                               )
             self.models.append(model)
 
@@ -141,6 +179,8 @@ class LGBMModel(M5Model):
             self.score += rmse
             print(f'RMSE: {rmse:.3f}')
             print('#' * 30)
+
+            val_pred = model.predict(self.X_val_wrmsse, num_iteration=model.best_iteration) / self.cv.get_n_splits()
             del model, train_data, valid_data, pred, rmse
             gc.collect()
 
@@ -150,6 +190,9 @@ class LGBMModel(M5Model):
             'features': self.features,
             'importance': self.importances
         })
+
+        self.X_val_wrmsse['demand'] = val_pred
+        self.X_val_wrmsse = self.X_val_wrmsse[['id', 'date', 'demand']]
 
         return self.models, self.importance_df
 

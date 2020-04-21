@@ -77,6 +77,26 @@ class Lag_RollMean_28(Feature):
                 self.new_colname.append(col)
 
 
+class Lag_RollMean_45(Feature):
+    """
+    lagと移動平均を組み合わせ
+    lagは28以上に設定すること
+    """
+    def create_features(self):
+        self.new_colname = []
+        windows = [45]
+        periods = [7, 14, 21, 30, 90]
+        for window in windows:
+            for period in periods:
+                col = f'rolling_{window}_mean_t{period}'
+                self.df[col] = self.df.groupby('id')['demand'].transform(
+                    lambda x: x.shift(window).rolling(period).mean()).astype(np.float32)
+                self.new_colname.append(col)
+                col = f'rolling_{window}_std_t{period}'
+                self.df[col] = self.df.groupby('id')['demand'].transform(
+                    lambda x: x.shift(window).rolling(period).std()).astype(np.float32)
+                self.new_colname.append(col)
+
 class Event(Feature):
     """
     イベント情報
@@ -143,33 +163,33 @@ class Lag_SellPrice_diff(Feature):
             self.new_colname.append(col)
 
 
-class Price_fe(Feature):
-    """
-    店舗・商品ごとの価格の基礎統計量
-    """
-    def create_features(self):
-        self.new_colname = ['price_max', 'price_min', 'price_mean', 'price_std', 'price_norm']
-        self.df['price_max'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('max')
-        self.df['price_min'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('min')
-        self.df['price_mean'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('mean')
-        self.df['price_std'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('std')
-        self.df['price_norm'] = self.df['sell_price'] / self.df['price_max']
-        for c in self.new_colname:
-            self.df[c] = self.df[c].astype(np.float32)
-
-
-# class Price_WeekNum(Feature):
+# class Price_fe(Feature):
 #     """
-#     週ごとの店舗・商品価格の基礎統計量
+#     店舗・商品ごとの価格の基礎統計量
 #     """
 #     def create_features(self):
-#         self.new_colname = ['price_week_max', 'price_week_min', 'price_week_mean', 'price_week_std']
-#         self.df['price_week_max'] = self.df.groupby(['store_id', 'item_id', 'wm_yr_wk'])['sell_price'].transform('max')
-#         self.df['price_week_min'] = self.df.groupby(['store_id', 'item_id', 'wm_yr_wk'])['sell_price'].transform('min')
-#         self.df['price_week_mean'] = self.df.groupby(['store_id', 'item_id', 'wm_yr_wk'])['sell_price'].transform('mean')
-#         self.df['price_week_std'] = self.df.groupby(['store_id', 'item_id', 'wm_yr_wk'])['sell_price'].transform('std')
+#         self.new_colname = ['price_max', 'price_min', 'price_mean', 'price_std', 'price_norm']
+#         self.df['price_max'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('max')
+#         self.df['price_min'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('min')
+#         self.df['price_mean'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('mean')
+#         self.df['price_std'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('std')
+#         self.df['price_norm'] = self.df['sell_price'] / self.df['price_max']
 #         for c in self.new_colname:
 #             self.df[c] = self.df[c].astype(np.float32)
+
+
+class Price_WeekNum(Feature):
+    """
+    週ごとの店舗・商品価格の基礎統計量
+    """
+    def create_features(self):
+        self.new_colname = ['price_week_max', 'price_week_min', 'price_week_mean', 'price_week_std']
+        self.df['price_week_max'] = self.df.groupby(['store_id', 'item_id', 'wm_yr_wk'])['sell_price'].transform('max')
+        self.df['price_week_min'] = self.df.groupby(['store_id', 'item_id', 'wm_yr_wk'])['sell_price'].transform('min')
+        self.df['price_week_mean'] = self.df.groupby(['store_id', 'item_id', 'wm_yr_wk'])['sell_price'].transform('mean')
+        self.df['price_week_std'] = self.df.groupby(['store_id', 'item_id', 'wm_yr_wk'])['sell_price'].transform('std')
+        for c in self.new_colname:
+            self.df[c] = self.df[c].astype(np.float32)
 
 
 if __name__ == '__main__':
@@ -188,6 +208,7 @@ if __name__ == '__main__':
     # Snap(df, dir=save_dir).run().save()
     # Lag(df, dir=save_dir).run().save()
     # Lag_RollMean_28(df, dir=save_dir).run().save()
+    Lag_RollMean_45(df, dir=save_dir).run().save()
     # Event(df, dir=save_dir).run().save()
     # Ids(df, dir=save_dir).run().save()
     # Lag_SellPrice(df, dir=save_dir).run().save()

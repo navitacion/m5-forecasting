@@ -14,13 +14,12 @@ parser.add_argument('-exp', '--expname')
 parser.add_argument('-obj', '--objective', default='regression', choices=['regression', 'poisson', 'tweedie'])
 parser.add_argument('-lr', '--learningrate', type=float, default=0.01)
 parser.add_argument('-subs', '--subsample', type=float, default=1.0)
-parser.add_argument('-featfreq', '--featurefraction', type=float, default=1.0)
+parser.add_argument('-featfrac', '--featurefraction', type=float, default=1.0)
 parser.add_argument('-cv', '--crossval', default='kfold', choices=['kfold', 'time', 'none'])
 parser.add_argument('-nsplit', '--nsplit', type=int, default=4)
 parser.add_argument('-num', '--num_boost_round', type=int, default=1000)
 parser.add_argument('-early', '--early_stopping_rounds', type=int, default=10)
 parser.add_argument('-drate', '--data_rate', type=float, default=0.1)
-parser.add_argument('-prep', '--preprocessing', type=int, default=1)
 parser.add_argument('--postprocess', action='store_true')
 args = parser.parse_args()
 
@@ -47,12 +46,6 @@ cv = {
     'time': TimeSeriesSplit(n_splits=args.nsplit),
     'none': 'none'
 }
-
-prep_dict = {
-    0: preprocessing_0,
-    1: preprocessing_1,
-}
-
 
 # Config  #####################################
 config = {
@@ -91,9 +84,8 @@ def main():
 
     # From Feather  #################
     target_features = [
-        'Snap', 'SellPrice', 'Lag_RollMean_28', 'Lag',
-        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event',
-        'Price_fe'
+        'Snap', 'SellPrice', 'Lag_RollMean_28', 'Lag', 'Lag_RollMean_45',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
     ]
 
     target_path = [f'../features/{name}.ftr' for name in target_features]
@@ -115,7 +107,19 @@ def main():
     # Feature Importance  #####################################
     lgbm.visualize_feature_importance()
 
-    # Time Counting
+    # WRMSSE  ##################################################
+    print('Reading files...')
+    calendar = pd.read_csv('../data/input/calendar.csv')
+    sell_prices = pd.read_csv('../data/input/sell_prices.csv')
+    sales_train_validation = pd.read_csv('../data/input/sales_train_validation.csv')
+    train_fold_df = sales_train_validation.iloc[:, :-28]
+    valid_fold_df = sales_train_validation.iloc[:, -28:]
+    del sales_train_validation
+
+    wrmsse = lgbm.get_wrmsse(train_fold_df, valid_fold_df, calendar, sell_prices)
+    print(f'WRMSSE: {wrmsse:.3f}')
+
+    # Time Counting  ##################################################
     erapsedtime = time.time() - since
     s = datetime.timedelta(seconds=erapsedtime)
     print(f'All Times: {str(s)}')
