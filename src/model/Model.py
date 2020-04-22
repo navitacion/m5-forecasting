@@ -63,7 +63,6 @@ class M5Model(metaclass=ABCMeta):
         # WRMSSEのためのvalデータ
         self.X_val_wrmsse = df[(df['date'] > '2016-03-27') & (df['date'] <= '2016-04-24')]
         self.y_val_wrmsse = self.X_val_wrmsse['demand'].values
-        self.X_val_wrmsse = self.X_val_wrmsse[self.features]
 
         self.importances = np.zeros((len(self.features)))
         self.importance_df = None
@@ -113,7 +112,6 @@ class M5Model(metaclass=ABCMeta):
         return score
 
 
-
 class LGBMModel(M5Model):
 
     def train(self):
@@ -150,7 +148,7 @@ class LGBMModel(M5Model):
                 print(f'{i + 1} Fold  RMSE: {rmse:.3f}')
                 print('#' * 30)
 
-                val_pred += model.predict(self.X_val_wrmsse, num_iteration=model.best_iteration) / self.cv.get_n_splits()
+                val_pred += model.predict(self.X_val_wrmsse[self.features], num_iteration=model.best_iteration) / self.cv.get_n_splits()
                 del model, train_data, valid_data, pred, rmse
                 gc.collect()
         # クロスバリデーションをしない場合
@@ -180,7 +178,7 @@ class LGBMModel(M5Model):
             print(f'RMSE: {rmse:.3f}')
             print('#' * 30)
 
-            val_pred = model.predict(self.X_val_wrmsse, num_iteration=model.best_iteration)
+            val_pred = model.predict(self.X_val_wrmsse[self.features], num_iteration=model.best_iteration)
             del model, train_data, valid_data, pred, rmse
             gc.collect()
 

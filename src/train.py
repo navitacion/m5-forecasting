@@ -82,7 +82,7 @@ def main():
 
     # From Feather  #################
     target_features = [
-        'Snap', 'SellPrice', 'Lag_RollMean_28', 'Lag', 'Lag_RollMean_45',
+        'Snap', 'SellPrice', 'Price_StoreItemDate', 'Lag_RollMean_28', 'Lag_RollMean_45', 'Lag', 'Lag_diff',
         'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
     ]
 
@@ -97,16 +97,6 @@ def main():
         with open(f"../models/{config['exp_name']}.pkl", 'wb') as f:
             pickle.dump(model, f)
 
-    # Evaluate  #####################################
-    res = lgbm.evaluate(postprocess=args.postprocess)
-    sub_name = f"{config['exp_name']}_rmse_{lgbm.score:.3f}.csv"
-    res.to_csv(f'../data/output/{sub_name}', index=False)
-    del df
-    gc.collect()
-
-    # Feature Importance  #####################################
-    lgbm.visualize_feature_importance()
-
     # WRMSSE  ##################################################
     print('Reading files...')
     calendar = pd.read_csv('../data/input/calendar.csv')
@@ -118,6 +108,18 @@ def main():
 
     wrmsse = lgbm.get_wrmsse(train_fold_df, valid_fold_df, calendar, sell_prices)
     print(f'WRMSSE: {wrmsse:.3f}')
+    del calendar, sell_prices, train_fold_df, valid_fold_df
+    gc.collect()
+
+    # Evaluate  #####################################
+    res = lgbm.evaluate(postprocess=args.postprocess)
+    sub_name = f"{config['exp_name']}_wrmsse_{wrmsse:.3f}.csv"
+    res.to_csv(f'../data/output/{sub_name}', index=False)
+    del df
+    gc.collect()
+
+    # Feature Importance  #####################################
+    lgbm.visualize_feature_importance()
 
     # Time Counting  ##################################################
     erapsedtime = time.time() - since

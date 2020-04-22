@@ -25,9 +25,8 @@ class TimeFeatures(Feature):
         for c in self.new_colname:
             self.df[c] = self.df[c].astype(np.int8)
 
-        # 最新日からどれだけ離れているか
-        self.df['from_now'] = self.df['date'].max() - self.df['date']
-        self.df['from_now'] = self.df['from_now'].apply(lambda x: x.days)
+        self.df['weeknum'] = self.df['date'].apply(lambda x: x.isocalendar()[1])
+        self.new_colname.append('weeknum')
 
 
 class Snap(Feature):
@@ -59,16 +58,34 @@ class Lag(Feature):
     """
     def create_features(self):
         lags = [28, 30, 90, 180, 365]
+        self.new_colname = []
         for lag in lags:
             self.df[f'lag_{lag}'] = self.df.groupby('id')['demand'].shift(lag)
             self.new_colname.append(f'lag_{lag}')
             col = f'demand_lag_{lag}_diff'
-            self.df[col] = self.df.groupby('id')['demand'].transform(lambda x: x - x.shift(lag))
+            self.df[col] = self.df.groupby('id')['demand'].transform(lambda x: x - x.shift(lag)).astype(np.float32)
             self.new_colname.append(col)
             col = f'demand_lag_{lag}_div'
-            self.df[col] = self.df.groupby('id')['demand'].transform(lambda x: x / x.shift(lag))
+            self.df[col] = self.df.groupby('id')['demand'].transform(lambda x: x / x.shift(lag)).astype(np.float32)
             self.new_colname.append(col)
 
+
+class Lag_diff(Feature):
+    """
+    28, 30, 90, 180, 365日前の売上数
+    差分と割合も計算
+    lagは28以上に設定すること
+    """
+    def create_features(self):
+        lags = [28, 30, 90, 180, 365]
+        self.new_colname = []
+        for lag in lags:
+            col = f'demand_lag_{lag}_diff'
+            self.df[col] = self.df.groupby('id')['demand'].transform(lambda x: x - x.shift(lag)).astype(np.float32)
+            self.new_colname.append(col)
+            col = f'demand_lag_{lag}_div'
+            self.df[col] = self.df.groupby('id')['demand'].transform(lambda x: x / x.shift(lag)).astype(np.float32)
+            self.new_colname.append(col)
 
 class Lag_RollMean_28(Feature):
     """
@@ -215,9 +232,10 @@ if __name__ == '__main__':
         df = pickle.load(f)
 
     # SellPrice(df, dir=save_dir).run().save()
-    TimeFeatures(df, dir=save_dir).run().save()
+    # TimeFeatures(df, dir=save_dir).run().save()
     # Snap(df, dir=save_dir).run().save()
     Lag(df, dir=save_dir).run().save()
+    Lag_diff(df, dir=save_dir).run().save()
     # Lag_RollMean_28(df, dir=save_dir).run().save()
     # Lag_RollMean_45(df, dir=save_dir).run().save()
     Event(df, dir=save_dir).run().save()
