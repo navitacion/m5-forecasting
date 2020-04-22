@@ -13,6 +13,9 @@ class SellPrice(Feature):
 
 
 class TimeFeatures(Feature):
+    """
+    日付の特徴量
+    """
     def create_features(self):
         self.new_colname = ['year', 'month', 'week', 'day', 'dayofweek', 'dayofyear']
         for c in self.new_colname:
@@ -21,6 +24,10 @@ class TimeFeatures(Feature):
         self.df['year'] = self.df['year'] - self.df['year'].min()
         for c in self.new_colname:
             self.df[c] = self.df[c].astype(np.int8)
+
+        # 最新日からどれだけ離れているか
+        self.df['from_now'] = self.df['date'].max() - self.df['date']
+        self.df['from_now'] = self.df['from_now'].apply(lambda x: x.days)
 
 
 class Snap(Feature):
@@ -44,16 +51,23 @@ class Snap(Feature):
         self.df['snap_sum'] = self.df['snap_CA'] + self.df['snap_TX'] + self.df['snap_WI']
 
 
-
 class Lag(Feature):
     """
-    28, 30, 90日前の売上
+    28, 30, 90, 180, 365日前の売上数
+    差分と割合も計算
     lagは28以上に設定すること
     """
     def create_features(self):
-        self.new_colname = ['lag_28', 'lag_30', 'lag_90']
-        for lag, lagcol in zip([28, 30, 90], self.new_colname):
-            self.df[lagcol] = self.df.groupby('id')['demand'].shift(lag)
+        lags = [28, 30, 90, 180, 365]
+        for lag in lags:
+            self.df[f'lag_{lag}'] = self.df.groupby('id')['demand'].shift(lag)
+            self.new_colname.append(f'lag_{lag}')
+            col = f'demand_lag_{lag}_diff'
+            self.df[col] = self.df.groupby('id')['demand'].transform(lambda x: x - x.shift(lag))
+            self.new_colname.append(col)
+            col = f'demand_lag_{lag}_div'
+            self.df[col] = self.df.groupby('id')['demand'].transform(lambda x: x / x.shift(lag))
+            self.new_colname.append(col)
 
 
 class Lag_RollMean_28(Feature):
@@ -97,6 +111,7 @@ class Lag_RollMean_45(Feature):
                     lambda x: x.shift(window).rolling(period).std()).astype(np.float32)
                 self.new_colname.append(col)
 
+
 class Event(Feature):
     """
     イベント情報
@@ -114,10 +129,6 @@ class Event(Feature):
 
             encoder = LabelEncoder()
             self.df[f] = encoder.fit_transform(self.df[f])
-
-        # 前日にイベントがあったかどうか
-        self.df['isEvent_past1'] = self.df.groupby('id')['isEvent'].transform(lambda x: x.shift(1))
-        self.new_colname.append('isEvent_past1')
 
 
 class Ids(Feature):
@@ -139,10 +150,10 @@ class Lag_SellPrice(Feature):
     def create_features(self):
         self.new_colname =[]
         self.df['sell_price'] = self.df['sell_price'].astype(np.float32)
-        lags = [7, 30, 90, 365]
+        lags = [28, 30, 90, 180, 365]
         for lag in lags:
             col = f'sell_price_lag_{lag}'
-            self.df[col] = self.df[['id', 'sell_price']].groupby('id')['sell_price'].transform(lambda x: x.shift(lag))
+            self.df[col] = self.df.groupby('id')['sell_price'].transform(lambda x: x.shift(lag))
             self.new_colname.append(col)
 
 
@@ -153,41 +164,42 @@ class Lag_SellPrice_diff(Feature):
     def create_features(self):
         self.new_colname =[]
         self.df['sell_price'] = self.df['sell_price'].astype(np.float32)
-        lags = [1, 7, 30, 90, 365]
+        lags = [28, 30, 90, 180, 365]
         for lag in lags:
             col = f'sell_price_lag_{lag}_diff'
-            self.df[col] = self.df[['id', 'sell_price']].groupby('id')['sell_price'].transform(lambda x: x - x.shift(lag))
+            self.df[col] = self.df.groupby('id')['sell_price'].transform(lambda x: x - x.shift(lag))
             self.new_colname.append(col)
             col = f'sell_price_lag_{lag}_div'
-            self.df[col] = self.df[['id', 'sell_price']].groupby('id')['sell_price'].transform(lambda x: x / x.shift(lag))
+            self.df[col] = self.df.groupby('id')['sell_price'].transform(lambda x: x / x.shift(lag))
             self.new_colname.append(col)
 
 
-# class Price_fe(Feature):
-#     """
-#     店舗・商品ごとの価格の基礎統計量
-#     """
-#     def create_features(self):
-#         self.new_colname = ['price_max', 'price_min', 'price_mean', 'price_std', 'price_norm']
-#         self.df['price_max'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('max')
-#         self.df['price_min'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('min')
-#         self.df['price_mean'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('mean')
-#         self.df['price_std'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('std')
-#         self.df['price_norm'] = self.df['sell_price'] / self.df['price_max']
-#         for c in self.new_colname:
-#             self.df[c] = self.df[c].astype(np.float32)
+class Price_fe(Feature):
+    """
+    店舗・商品ごとの価格の基礎統計量
+    """
+    def create_features(self):
+        self.new_colname = ['price_max', 'price_min', 'price_mean', 'price_std', 'price_norm']
+        self.df['price_max'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('max')
+        self.df['price_min'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('min')
+        self.df['price_mean'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('mean')
+        self.df['price_std'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('std')
+        self.df['price_norm'] = self.df['sell_price'] / self.df['price_max']
+        for c in self.new_colname:
+            self.df[c] = self.df[c].astype(np.float32)
 
 
-class Price_WeekNum(Feature):
+class Price_StoreItemDate(Feature):
     """
     週ごとの店舗・商品価格の基礎統計量
     """
     def create_features(self):
-        self.new_colname = ['price_week_max', 'price_week_min', 'price_week_mean', 'price_week_std']
-        self.df['price_week_max'] = self.df.groupby(['store_id', 'item_id', 'wm_yr_wk'])['sell_price'].transform('max')
-        self.df['price_week_min'] = self.df.groupby(['store_id', 'item_id', 'wm_yr_wk'])['sell_price'].transform('min')
-        self.df['price_week_mean'] = self.df.groupby(['store_id', 'item_id', 'wm_yr_wk'])['sell_price'].transform('mean')
-        self.df['price_week_std'] = self.df.groupby(['store_id', 'item_id', 'wm_yr_wk'])['sell_price'].transform('std')
+        self.new_colname = ['price_store_item_date_max', 'price_store_item_date_min',
+                            'price_store_item_date_mean', 'price_store_item_date_std']
+        self.df['price_store_item_date_max'] = self.df.groupby(['store_id', 'item_id', 'date'])['sell_price'].transform('max')
+        self.df['price_store_item_date_min'] = self.df.groupby(['store_id', 'item_id', 'date'])['sell_price'].transform('min')
+        self.df['price_store_item_date_mean'] = self.df.groupby(['store_id', 'item_id', 'date'])['sell_price'].transform('mean')
+        self.df['price_store_item_date_std'] = self.df.groupby(['store_id', 'item_id', 'date'])['sell_price'].transform('std')
         for c in self.new_colname:
             self.df[c] = self.df[c].astype(np.float32)
 
@@ -201,17 +213,16 @@ if __name__ == '__main__':
 
     with open('../data/input/data.pkl', 'rb') as f:
         df = pickle.load(f)
-    print(df.dtypes)
 
     # SellPrice(df, dir=save_dir).run().save()
-    # TimeFeatures(df, dir=save_dir).run().save()
+    TimeFeatures(df, dir=save_dir).run().save()
     # Snap(df, dir=save_dir).run().save()
-    # Lag(df, dir=save_dir).run().save()
+    Lag(df, dir=save_dir).run().save()
     # Lag_RollMean_28(df, dir=save_dir).run().save()
-    Lag_RollMean_45(df, dir=save_dir).run().save()
-    # Event(df, dir=save_dir).run().save()
+    # Lag_RollMean_45(df, dir=save_dir).run().save()
+    Event(df, dir=save_dir).run().save()
     # Ids(df, dir=save_dir).run().save()
-    # Lag_SellPrice(df, dir=save_dir).run().save()
+    Lag_SellPrice(df, dir=save_dir).run().save()
     # Lag_SellPrice_diff(df, dir=save_dir).run().save()
     # Price_fe(df, dir=save_dir).run().save()
-    # Price_WeekNum(df, dir=save_dir).run().save()
+    Price_StoreItemDate(df, dir=save_dir).run().save()

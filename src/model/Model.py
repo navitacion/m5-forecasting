@@ -180,7 +180,7 @@ class LGBMModel(M5Model):
             print(f'RMSE: {rmse:.3f}')
             print('#' * 30)
 
-            val_pred = model.predict(self.X_val_wrmsse, num_iteration=model.best_iteration) / self.cv.get_n_splits()
+            val_pred = model.predict(self.X_val_wrmsse, num_iteration=model.best_iteration)
             del model, train_data, valid_data, pred, rmse
             gc.collect()
 

@@ -1,10 +1,8 @@
-import glob, pickle, time, datetime, argparse
+import glob, pickle, time, datetime, argparse, gc
 import pandas as pd
 from sklearn.model_selection import KFold, TimeSeriesSplit
 
-from utils.preprocessing import preprocessing_1, preprocessing_0
 from utils.utils import load_data, load_from_feather, reduce_mem_usage, seed_everything
-from utils.parameters import *
 from model.Model import LGBMModel
 
 
@@ -103,6 +101,8 @@ def main():
     res = lgbm.evaluate(postprocess=args.postprocess)
     sub_name = f"{config['exp_name']}_rmse_{lgbm.score:.3f}.csv"
     res.to_csv(f'../data/output/{sub_name}', index=False)
+    del df
+    gc.collect()
 
     # Feature Importance  #####################################
     lgbm.visualize_feature_importance()

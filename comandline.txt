@@ -41,7 +41,6 @@ target_features = [
         'Snap', 'SellPrice', 'Lag_RollMean_28', 'Lag', 'Lag_RollMean_45',
         'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
     ]
-
 CV: 2.253    PB: 0.76937
 
 
@@ -52,3 +51,4 @@ target_features = [
         'Snap', 'SellPrice', 'Lag_RollMean_28', 'Lag', 'Lag_RollMean_45',
         'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
     ]
+CV: 2.277    PB: 0.63411
