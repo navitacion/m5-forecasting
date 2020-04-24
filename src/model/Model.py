@@ -34,7 +34,7 @@ class M5Model(metaclass=ABCMeta):
         self.cat_features = [c for c in self.cat_features if c not in drop_f]
 
         # Train Data
-        self.X = df[df['part'] == 'train']
+        self.X = df[df['part'] == 'train'].copy()
         # 価格がないものは販売していないため除外する
         self.X.dropna(subset=['sell_price'], inplace=True)
         # 日付昇順に並び替える
@@ -49,19 +49,19 @@ class M5Model(metaclass=ABCMeta):
         self.X = self.X[self.features].values
 
         # Validation
-        self.vals = df[df['part'] == 'test1']
+        self.vals = df[df['part'] == 'test1'].copy()
         self.val_id = self.vals['id'].values
         self.val_date = self.vals['date'].values
         self.vals = self.vals[self.features].values
 
         # Evaluation
-        self.evals = df[df['part'] == 'test2']
+        self.evals = df[df['part'] == 'test2'].copy()
         self.eval_id = self.evals['id'].values
         self.eval_date = self.evals['date'].values
         self.evals = self.evals[self.features].values
 
         # WRMSSEのためのvalデータ
-        self.X_val_wrmsse = df[(df['date'] > '2016-03-27') & (df['date'] <= '2016-04-24')]
+        self.X_val_wrmsse = df[(df['date'] > '2016-03-27') & (df['date'] <= '2016-04-24')].copy()
         self.y_val_wrmsse = self.X_val_wrmsse['demand'].values
 
         self.importances = np.zeros((len(self.features)))
@@ -229,7 +229,7 @@ class LGBMModel(M5Model):
         res = pd.concat([res_val, res_eval], axis=0)
 
         if postprocess:
-            alphas = [1.028, 1.023, 1.018]
+            alphas = [1.035, 1.03, 1.025]
             weights = [1 / len(alphas)] * len(alphas)
             _res = res.copy()
             for f in F_list:

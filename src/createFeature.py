@@ -52,40 +52,24 @@ class Snap(Feature):
 
 class Lag(Feature):
     """
-    28, 30, 90, 180, 365日前の売上数
-    差分と割合も計算
+    28, 90, 180, 365日前の売上数
     lagは28以上に設定すること
     """
     def create_features(self):
-        lags = [28, 30, 90, 180, 365]
+        lags = [28, 90, 180, 365]
         self.new_colname = []
         for lag in lags:
-            self.df[f'lag_{lag}'] = self.df.groupby('id')['demand'].shift(lag)
+            self.df[f'lag_{lag}'] = self.df.groupby('id')['demand'].shift(lag).astype(np.float32)
             self.new_colname.append(f'lag_{lag}')
-            col = f'demand_lag_{lag}_diff'
-            self.df[col] = self.df.groupby('id')['demand'].transform(lambda x: x - x.shift(lag)).astype(np.float32)
-            self.new_colname.append(col)
-            col = f'demand_lag_{lag}_div'
-            self.df[col] = self.df.groupby('id')['demand'].transform(lambda x: x / x.shift(lag)).astype(np.float32)
-            self.new_colname.append(col)
 
+            # 差分や割合を計算するとうまく学習しない
+            # col = f'demand_lag_{lag}_diff'
+            # self.df[col] = self.df['demand'] - self.df[f'lag_{lag}']
+            # self.new_colname.append(col)
+            # col = f'demand_lag_{lag}_div'
+            # self.df[col] = self.df['demand'] / self.df[f'lag_{lag}']
+            # self.new_colname.append(col)
 
-class Lag_diff(Feature):
-    """
-    28, 30, 90, 180, 365日前の売上数
-    差分と割合も計算
-    lagは28以上に設定すること
-    """
-    def create_features(self):
-        lags = [28, 30, 90, 180, 365]
-        self.new_colname = []
-        for lag in lags:
-            col = f'demand_lag_{lag}_diff'
-            self.df[col] = self.df.groupby('id')['demand'].transform(lambda x: x - x.shift(lag)).astype(np.float32)
-            self.new_colname.append(col)
-            col = f'demand_lag_{lag}_div'
-            self.df[col] = self.df.groupby('id')['demand'].transform(lambda x: x / x.shift(lag)).astype(np.float32)
-            self.new_colname.append(col)
 
 class Lag_RollMean_28(Feature):
     """
@@ -95,7 +79,7 @@ class Lag_RollMean_28(Feature):
     def create_features(self):
         self.new_colname = []
         windows = [28]
-        periods = [7, 14, 21, 30, 90]
+        periods = [7, 14, 30, 90]
         for window in windows:
             for period in periods:
                 col = f'rolling_{window}_mean_t{period}'
@@ -116,7 +100,7 @@ class Lag_RollMean_45(Feature):
     def create_features(self):
         self.new_colname = []
         windows = [45]
-        periods = [7, 14, 21, 30, 90]
+        periods = [7, 14, 30, 90]
         for window in windows:
             for period in periods:
                 col = f'rolling_{window}_mean_t{period}'
@@ -167,7 +151,7 @@ class Lag_SellPrice(Feature):
     def create_features(self):
         self.new_colname =[]
         self.df['sell_price'] = self.df['sell_price'].astype(np.float32)
-        lags = [28, 30, 90, 180, 365]
+        lags = [28, 90, 180, 365]
         for lag in lags:
             col = f'sell_price_lag_{lag}'
             self.df[col] = self.df.groupby('id')['sell_price'].transform(lambda x: x.shift(lag))
@@ -181,13 +165,14 @@ class Lag_SellPrice_diff(Feature):
     def create_features(self):
         self.new_colname =[]
         self.df['sell_price'] = self.df['sell_price'].astype(np.float32)
-        lags = [28, 30, 90, 180, 365]
+        lags = [28, 90, 180, 365]
         for lag in lags:
+            self.df[f'sell_price_lag_{lag}'] = self.df.groupby('id')['sell_price'].transform(lambda x: x.shift(lag)).astype(np.float32)
             col = f'sell_price_lag_{lag}_diff'
-            self.df[col] = self.df.groupby('id')['sell_price'].transform(lambda x: x - x.shift(lag))
+            self.df[col] = self.df['sell_price'] - self.df[f'sell_price_lag_{lag}']
             self.new_colname.append(col)
             col = f'sell_price_lag_{lag}_div'
-            self.df[col] = self.df.groupby('id')['sell_price'].transform(lambda x: x / x.shift(lag))
+            self.df[col] = self.df['sell_price'] / self.df[f'sell_price_lag_{lag}']
             self.new_colname.append(col)
 
 
@@ -209,6 +194,7 @@ class Price_fe(Feature):
 class Price_StoreItemDate(Feature):
     """
     週ごとの店舗・商品価格の基礎統計量
+    ほとんど使える感じではなさそう
     """
     def create_features(self):
         self.new_colname = ['price_store_item_date_max', 'price_store_item_date_min',
@@ -235,12 +221,11 @@ if __name__ == '__main__':
     # TimeFeatures(df, dir=save_dir).run().save()
     # Snap(df, dir=save_dir).run().save()
     Lag(df, dir=save_dir).run().save()
-    Lag_diff(df, dir=save_dir).run().save()
     # Lag_RollMean_28(df, dir=save_dir).run().save()
     # Lag_RollMean_45(df, dir=save_dir).run().save()
-    Event(df, dir=save_dir).run().save()
+    # Event(df, dir=save_dir).run().save()
     # Ids(df, dir=save_dir).run().save()
     Lag_SellPrice(df, dir=save_dir).run().save()
-    # Lag_SellPrice_diff(df, dir=save_dir).run().save()
+    Lag_SellPrice_diff(df, dir=save_dir).run().save()
     # Price_fe(df, dir=save_dir).run().save()
-    Price_StoreItemDate(df, dir=save_dir).run().save()
+    # Price_StoreItemDate(df, dir=save_dir).run().save()

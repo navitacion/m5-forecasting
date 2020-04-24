@@ -82,7 +82,7 @@ def main():
 
     # From Feather  #################
     target_features = [
-        'Snap', 'SellPrice', 'Price_StoreItemDate', 'Lag_RollMean_28', 'Lag_RollMean_45', 'Lag', 'Lag_diff',
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Price_fe',
         'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
     ]
 

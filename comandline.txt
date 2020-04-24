@@ -48,7 +48,22 @@ CV: 2.253    PB: 0.76937
 tweedie_1と同じ条件
 python train.py -exp lgbm_tweedie_3 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.6
 target_features = [
-        'Snap', 'SellPrice', 'Lag_RollMean_28', 'Lag', 'Lag_RollMean_45',
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Lag_RollMean_45',
         'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
     ]
 CV: 2.277  WRMSSE: 0.616  PB: 0.63411
+
+
+'Price_StoreItemDate'の重要度はそんなに高くない
+python train.py -exp lgbm_tweedie_4 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.4
+target_features = [
+        'Snap', 'SellPrice', 'Price_StoreItemDate', 'Lag', 'Lag_RollMean_28',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+RMSE: 2.260  WRMSSE: 0.627  PB: 
+
+python train.py -exp lgbm_tweedie_5 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.4
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Price_fe',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
