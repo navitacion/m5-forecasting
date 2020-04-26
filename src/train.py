@@ -18,11 +18,23 @@ parser.add_argument('-nsplit', '--nsplit', type=int, default=4)
 parser.add_argument('-num', '--num_boost_round', type=int, default=1000)
 parser.add_argument('-early', '--early_stopping_rounds', type=int, default=10)
 parser.add_argument('-drate', '--data_rate', type=float, default=0.1)
-parser.add_argument('--postprocess', action='store_true')
+parser.add_argument('-prep', '--preprocess', action='store_true')
+parser.add_argument('-post', '--postprocess', action='store_true')
 args = parser.parse_args()
 
 
 # Parameter  #############################################################
+# params = {
+#     'boosting_type': 'gbdt',
+#     'objective': args.objective,
+#     'metric': 'rmse',
+#     'learning_rate': args.learningrate,
+#     'subsample': args.subsample,
+#     'subsample_freq': 1,
+#     'feature_fraction': args.featurefraction,
+#     'seed': 0
+# }
+
 params = {
     'boosting_type': 'gbdt',
     'objective': args.objective,
@@ -31,8 +43,11 @@ params = {
     'subsample': args.subsample,
     'subsample_freq': 1,
     'feature_fraction': args.featurefraction,
-    'seed': 0
-
+    'seed': 0,
+    'num_leaves': 2**11-1,
+    'min_data_in_leaf': 2**12-1,
+    'n_estimators': 1400,
+    'boost_from_average': False,
 }
 
 if args.objective == 'tweedie':
@@ -56,7 +71,8 @@ config = {
     'use_data': args.data_rate,
     'exp_name': args.expname,
     'drop_f': ['snap_CA', 'snap_WI', 'snap_TX', 'cat_id', 'state_id', 'dept_id',
-               'event_name_1', 'event_type_1', 'event_name_2', 'event_type_2']
+               'event_name_1', 'event_type_1', 'event_name_2', 'event_type_2'],
+    'use_prep': args.preprocess,
 }
 
 save_model = True
@@ -82,7 +98,7 @@ def main():
 
     # From Feather  #################
     target_features = [
-        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Price_fe',
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Lag_RollMean_45',
         'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
     ]
 

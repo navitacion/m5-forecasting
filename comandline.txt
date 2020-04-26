@@ -67,3 +67,63 @@ target_features = [
         'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Price_fe',
         'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
     ]
+RMSE: 2.261  WRMSSE: 0.632  PB: 0.67158
+
+
+# 長時間0のデータを削除する前処理を設定
+# 学習するデータが少なくなるからCVは落ちる
+python train.py -exp lgbm_tweedie_6 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.4 -prep
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Price_fe',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+RMSE: 2.671  WRMSSE: 1.199  PB: 0.94335
+
+
+python train.py -exp lgbm_tweedie_7 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.4
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Price_fe',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event',
+        'SalesPeriod'
+    ]
+RMSE: 2.261  WRMSSE: 0.628  PB: 
+
+
+python train.py -exp lgbm_tweedie_8 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.4
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_1', 'Lag_RollMean_14', 'Lag_RollMean_28', 
+        'Price_fe', 'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event',
+        'SalesPeriod'
+    ]
+RMSE: 2.000  WRMSSE: 0.641  PB: 4.12133
+
+
+python train.py -exp lgbm_tweedie_9 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.4
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_7', 'Lag_RollMean_14', 'Lag_RollMean_28', 
+        'Price_fe', 'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event',
+        'SalesPeriod'
+    ]
+RMSE: 2.119  WRMSSE: 0.624  PB: 2.57433
+
+
+
+# パラメータを変えてみる
+https://www.kaggle.com/kyakovlev/m5-three-shades-of-dark-darker-magic
+python train.py -exp lgbm_tweedie_10 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 20000 -early 2000000 -drate 0.6 -subs 0.5 -featfrac 0.5
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Lag_RollMean_45',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+RMSE:   WRMSSE:   PB: 
+
+
+
+
+
+
+# 店舗ごとのモデル
+python train_store_id.py -exp lgbm_tweedie_storeid_1 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.4
+target_features = [
+        'Snap', 'SellPrice', 'Ids', 'Event',
+    ]

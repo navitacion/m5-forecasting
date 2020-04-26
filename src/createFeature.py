@@ -28,6 +28,12 @@ class TimeFeatures(Feature):
         self.df['weeknum'] = self.df['date'].apply(lambda x: x.isocalendar()[1])
         self.new_colname.append('weeknum')
 
+        self.df['tm_wm'] = self.df['day'].apply(lambda x: np.ceil(x/7)).astype(np.int8)
+        self.new_colname.append('tm_wm')
+
+        self.df['weekend'] = (self.df['dayofweek']>=5).astype(np.int8)
+        self.new_colname.append('weekend')
+
 
 class Snap(Feature):
     """
@@ -52,11 +58,11 @@ class Snap(Feature):
 
 class Lag(Feature):
     """
-    28, 90, 180, 365日前の売上数
+    28, 60, 90, 180, 365日前の売上数
     lagは28以上に設定すること
     """
     def create_features(self):
-        lags = [28, 90, 180, 365]
+        lags = [28, 60, 90, 180, 365]
         self.new_colname = []
         for lag in lags:
             self.df[f'lag_{lag}'] = self.df.groupby('id')['demand'].shift(lag).astype(np.float32)
@@ -71,6 +77,48 @@ class Lag(Feature):
             # self.new_colname.append(col)
 
 
+class Lag_RollMean_7(Feature):
+    """
+    lagと移動平均を組み合わせ
+    lagは28以上に設定すること
+    """
+    def create_features(self):
+        self.new_colname = []
+        windows = [7]
+        periods = [7, 14, 30, 60]
+        for window in windows:
+            for period in periods:
+                col = f'rolling_{window}_mean_t{period}'
+                self.df[col] = self.df.groupby('id')['demand'].transform(
+                    lambda x: x.shift(window).rolling(period).mean()).astype(np.float32)
+                self.new_colname.append(col)
+                col = f'rolling_{window}_std_t{period}'
+                self.df[col] = self.df.groupby('id')['demand'].transform(
+                    lambda x: x.shift(window).rolling(period).std()).astype(np.float32)
+                self.new_colname.append(col)
+
+
+class Lag_RollMean_14(Feature):
+    """
+    lagと移動平均を組み合わせ
+    lagは28以上に設定すること
+    """
+    def create_features(self):
+        self.new_colname = []
+        windows = [14]
+        periods = [7, 14, 30, 60]
+        for window in windows:
+            for period in periods:
+                col = f'rolling_{window}_mean_t{period}'
+                self.df[col] = self.df.groupby('id')['demand'].transform(
+                    lambda x: x.shift(window).rolling(period).mean()).astype(np.float32)
+                self.new_colname.append(col)
+                col = f'rolling_{window}_std_t{period}'
+                self.df[col] = self.df.groupby('id')['demand'].transform(
+                    lambda x: x.shift(window).rolling(period).std()).astype(np.float32)
+                self.new_colname.append(col)
+
+
 class Lag_RollMean_28(Feature):
     """
     lagと移動平均を組み合わせ
@@ -79,7 +127,7 @@ class Lag_RollMean_28(Feature):
     def create_features(self):
         self.new_colname = []
         windows = [28]
-        periods = [7, 14, 30, 90]
+        periods = [7, 14, 30, 60]
         for window in windows:
             for period in periods:
                 col = f'rolling_{window}_mean_t{period}'
@@ -100,7 +148,7 @@ class Lag_RollMean_45(Feature):
     def create_features(self):
         self.new_colname = []
         windows = [45]
-        periods = [7, 14, 30, 90]
+        periods = [7, 14, 30, 60]
         for window in windows:
             for period in periods:
                 col = f'rolling_{window}_mean_t{period}'
@@ -181,12 +229,17 @@ class Price_fe(Feature):
     店舗・商品ごとの価格の基礎統計量
     """
     def create_features(self):
-        self.new_colname = ['price_max', 'price_min', 'price_mean', 'price_std', 'price_norm']
-        self.df['price_max'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('max')
-        self.df['price_min'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('min')
-        self.df['price_mean'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('mean')
-        self.df['price_std'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('std')
+        self.new_colname = ['price_max', 'price_min', 'price_mean', 'price_std', 'price_norm',
+                            'price_nunique', 'item_nunique']
+        self.df['price_max'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('max').astype(np.float32)
+        self.df['price_min'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('min').astype(np.float32)
+        self.df['price_mean'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('mean').astype(np.float32)
+        self.df['price_std'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('std').astype(np.float32)
         self.df['price_norm'] = self.df['sell_price'] / self.df['price_max']
+
+        self.df['price_nunique'] = self.df.groupby(['store_id', 'item_id'])['sell_price'].transform('nunique')
+        self.df['item_nunique'] = self.df.groupby(['store_id', 'sell_price'])['item_id'].transform('nunique')
+
         for c in self.new_colname:
             self.df[c] = self.df[c].astype(np.float32)
 
@@ -207,6 +260,19 @@ class Price_StoreItemDate(Feature):
             self.df[c] = self.df[c].astype(np.float32)
 
 
+class SalesPeriod(Feature):
+    """
+    idごとの販売日数
+    """
+    def create_features(self):
+        self.new_colname = ['sales_period']
+        _df = self.df.dropna()[['id', 'date']].copy()
+        _df = _df.groupby('id').count().reset_index()
+        rep = {k:v for k, v in zip(_df['id'].values, _df['date'].values)}
+        del _df
+        self.df['sales_period'] = self.df['id'].map(rep)
+
+
 if __name__ == '__main__':
 
     save_dir = '../features'
@@ -218,14 +284,19 @@ if __name__ == '__main__':
         df = pickle.load(f)
 
     # SellPrice(df, dir=save_dir).run().save()
-    # TimeFeatures(df, dir=save_dir).run().save()
+    TimeFeatures(df, dir=save_dir).run().save()
     # Snap(df, dir=save_dir).run().save()
     Lag(df, dir=save_dir).run().save()
-    # Lag_RollMean_28(df, dir=save_dir).run().save()
-    # Lag_RollMean_45(df, dir=save_dir).run().save()
+    Lag_RollMean_7(df, dir=save_dir).run().save()
+    Lag_RollMean_14(df, dir=save_dir).run().save()
+    Lag_RollMean_28(df, dir=save_dir).run().save()
+    Lag_RollMean_45(df, dir=save_dir).run().save()
     # Event(df, dir=save_dir).run().save()
     # Ids(df, dir=save_dir).run().save()
-    Lag_SellPrice(df, dir=save_dir).run().save()
-    Lag_SellPrice_diff(df, dir=save_dir).run().save()
-    # Price_fe(df, dir=save_dir).run().save()
+    # Lag_SellPrice(df, dir=save_dir).run().save()
+    # Lag_SellPrice_diff(df, dir=save_dir).run().save()
+    Price_fe(df, dir=save_dir).run().save()
     # Price_StoreItemDate(df, dir=save_dir).run().save()
+    # SalesPeriod(df, dir=save_dir).run().save()
+
+
