@@ -41,7 +41,7 @@ class Snap(Feature):
     state_idがCAであれば、snapはsnap_CAの値を使う
     """
     def create_features(self):
-        self.new_colname = ['snap', 'snap_sum']
+        self.new_colname = ['snap_CA', 'snap_TX', 'snap_WI', 'snap', 'snap_sum']
         self.df['snap'] = 0
 
         self.df.loc[self.df[self.df['state_id'] == 'CA'].index, 'snap'] = self.df.loc[
@@ -62,7 +62,7 @@ class Lag(Feature):
     lagは28以上に設定すること
     """
     def create_features(self):
-        lags = [28, 60, 90, 180, 365]
+        lags = [28, 29, 30, 31, 32, 33, 34, 60, 90, 180, 365]
         self.new_colname = []
         for lag in lags:
             self.df[f'lag_{lag}'] = self.df.groupby('id')['demand'].shift(lag).astype(np.float32)
@@ -284,18 +284,18 @@ if __name__ == '__main__':
         df = pickle.load(f)
 
     # SellPrice(df, dir=save_dir).run().save()
-    TimeFeatures(df, dir=save_dir).run().save()
-    # Snap(df, dir=save_dir).run().save()
+    # TimeFeatures(df, dir=save_dir).run().save()
+    Snap(df, dir=save_dir).run().save()
     Lag(df, dir=save_dir).run().save()
-    Lag_RollMean_7(df, dir=save_dir).run().save()
-    Lag_RollMean_14(df, dir=save_dir).run().save()
-    Lag_RollMean_28(df, dir=save_dir).run().save()
-    Lag_RollMean_45(df, dir=save_dir).run().save()
+    # Lag_RollMean_7(df, dir=save_dir).run().save()
+    # Lag_RollMean_14(df, dir=save_dir).run().save()
+    # Lag_RollMean_28(df, dir=save_dir).run().save()
+    # Lag_RollMean_45(df, dir=save_dir).run().save()
     # Event(df, dir=save_dir).run().save()
     # Ids(df, dir=save_dir).run().save()
     # Lag_SellPrice(df, dir=save_dir).run().save()
     # Lag_SellPrice_diff(df, dir=save_dir).run().save()
-    Price_fe(df, dir=save_dir).run().save()
+    # Price_fe(df, dir=save_dir).run().save()
     # Price_StoreItemDate(df, dir=save_dir).run().save()
     # SalesPeriod(df, dir=save_dir).run().save()
 

@@ -249,9 +249,10 @@ class LGBMModel(M5Model):
             return res
 
 
-class M5Model_storeid(metaclass=ABCMeta):
+class M5Model_group(metaclass=ABCMeta):
     def __init__(self, df, features, params, cv, num_boost_round=1000,
-                 early_stopping_rounds=20, verbose=200, exp_name='Model', use_data=None, drop_f=None, use_prep=False):
+                 early_stopping_rounds=20, verbose=200, exp_name='Model', group_col='store',
+                 use_data=None, drop_f=None, use_prep=False):
 
         self.params = params
         self.cv = cv
@@ -271,12 +272,22 @@ class M5Model_storeid(metaclass=ABCMeta):
         self.cat_features = [c for c in df.select_dtypes('category').columns if c not in self.features]
         self.cat_features = [c for c in self.cat_features if c not in drop_f]
 
+        # Group definition
         # Store_id
-        df['a'] = df['id'].apply(lambda x: x.split('_')[3])
-        df['b'] = df['id'].apply(lambda x: x.split('_')[4])
-        df['store'] = df['a'].astype(str) + '_' + df['b'].astype(str)
-        df.drop(['a', 'b'], axis=1, inplace=True)
-        self.store_id_list = df['store'].unique()
+        if group_col == 'store':
+            df['a'] = df['id'].apply(lambda x: x.split('_')[3])
+            df['b'] = df['id'].apply(lambda x: x.split('_')[4])
+            df['group_col'] = df['a'].astype(str) + '_' + df['b'].astype(str)
+            df.drop(['a', 'b'], axis=1, inplace=True)
+            self.group_col_list = df['group_col'].unique()
+        # State: CA, TX, WI
+        elif group_col == 'state':
+            df['group_col'] = df['id'].apply(lambda x: x.split('_')[3])
+            self.group_col_list = df['group_col'].unique()
+        # Category: HOBBIES, HOUSEHOLD, FOODS
+        elif group_col == 'cat':
+            df['group_col'] = df['id'].apply(lambda x: x.split('_')[0])
+            self.group_col_list = df['group_col'].unique()
 
         # Train Data
         self.X = df[df['part'] == 'train'].copy()
@@ -350,44 +361,46 @@ class M5Model_storeid(metaclass=ABCMeta):
         return score
 
 
-class LGBMModel_storeid(M5Model_storeid):
+class LGBMModel_group(M5Model_group):
 
     def train(self, postprocess=False):
         print('LightGBM Model Training...')
         print('Train Data Shape: ', self.X.shape)
-        wrmsse_pred = np.zeros(len(self.X_val_wrmsse))
-        pred_val = np.zeros(len(self.vals))
-        pred_eval = np.zeros(len(self.evals))
 
         res_wrmsse = pd.DataFrame()
         res_val = pd.DataFrame()
         res_eval = pd.DataFrame()
 
-        for store in self.store_id_list:
+        for tar_col in self.group_col_list:
 
-            print(f'Store: {store}')
+            print(f'Group: {tar_col}')
             self.score = 0.0
-            # 特定の店舗に絞る
-            _X = self.X[self.X['store'] == store]
-            self.target = _X['demand'].values
+            # 特定の対象に絞る
+            _X = self.X[self.X['group_col'] == tar_col]
+            _y = _X['demand'].values
             _X = _X[self.features].values
+            print('Train Data Shape: ', _X.shape)
 
-            _X_val_wrmsse = self.X_val_wrmsse[self.X_val_wrmsse['store'] == store]
+            _X_val_wrmsse = self.X_val_wrmsse[self.X_val_wrmsse['group_col'] == tar_col]
             wrmsse_id = _X_val_wrmsse['id'].values
             wrmsse_date = _X_val_wrmsse['date'].values
 
-            _vals = self.vals[self.vals['store'] == store]
+            _vals = self.vals[self.vals['group_col'] == tar_col]
             _vals_id = _vals['id'].values
             _vals_date = _vals['date'].values
-            _evals = self.evals[self.evals['store'] == store]
+            _evals = self.evals[self.evals['group_col'] == tar_col]
             _evals_id = _evals['id'].values
             _evals_date = _evals['date'].values
 
             # クロスバリデーションを用いる場合
             if self.cv != 'none':
+                pred_wrmsse = np.zeros(len(_X_val_wrmsse))
+                pred_val = np.zeros(len(_vals))
+                pred_eval = np.zeros(len(_evals))
+
                 for i, (trn_idx, val_idx) in enumerate(self.cv.split(_X)):
-                    train_data = lgb.Dataset(_X[trn_idx], label=self.target[trn_idx])
-                    valid_data = lgb.Dataset(_X[val_idx], label=self.target[val_idx],
+                    train_data = lgb.Dataset(_X[trn_idx], label=_y[trn_idx])
+                    valid_data = lgb.Dataset(_X[val_idx], label=_y[val_idx],
                                              reference=train_data)
 
                     model = lgb.train(self.params,
@@ -405,24 +418,22 @@ class LGBMModel_storeid(M5Model_storeid):
                     self.importances += model.feature_importance() / self.cv.get_n_splits()
 
                     pred = model.predict(_X[val_idx], num_iteration=model.best_iteration)
-                    rmse = np.sqrt(mean_squared_error(y_true=self.target[val_idx], y_pred=pred))
+                    rmse = np.sqrt(mean_squared_error(y_true=_y[val_idx], y_pred=pred))
                     self.score += rmse / self.cv.get_n_splits()
                     print(f'{i + 1} Fold  RMSE: {rmse:.3f}')
                     print('#' * 30)
 
-                    wrmsse_pred[_X_val_wrmsse.index] += \
-                        model.predict(_X_val_wrmsse[self.features], num_iteration=model.best_iteration).ravel() / self.cv.get_n_splits()
-                    pred_val[_vals.index] += model.predict(_vals[self.features], num_iteration=model.best_iteration).ravel() / self.cv.get_n_splits()
-                    pred_eval[_evals.index] += model.predict(_evals[self.features], num_iteration=model.best_iteration).ravel() / self.cv.get_n_splits()
+                    pred_wrmsse += model.predict(_X_val_wrmsse[self.features], num_iteration=model.best_iteration) / self.cv.get_n_splits()
+                    pred_val += model.predict(_vals[self.features], num_iteration=model.best_iteration) / self.cv.get_n_splits()
+                    pred_eval += model.predict(_evals[self.features], num_iteration=model.best_iteration) / self.cv.get_n_splits()
                     del model, train_data, valid_data, pred, rmse
                     gc.collect()
 
             # クロスバリデーションをしない場合
             else:
                 dev_idx = int(len(_X) * 0.8)
-                train_data = lgb.Dataset(_X[:dev_idx], label=self.target[:dev_idx])
-                valid_data = lgb.Dataset(_X[dev_idx:], label=self.target[dev_idx:],
-                                         reference=train_data)
+                train_data = lgb.Dataset(_X[:dev_idx], label=_y[:dev_idx])
+                valid_data = lgb.Dataset(_X[dev_idx:], label=_y[dev_idx:], reference=train_data)
 
                 model = lgb.train(self.params,
                                   train_data,
@@ -439,7 +450,7 @@ class LGBMModel_storeid(M5Model_storeid):
                 self.importances += model.feature_importance()
 
                 pred = model.predict(_X[dev_idx:], num_iteration=model.best_iteration)
-                rmse = np.sqrt(mean_squared_error(y_true=self.target[dev_idx:], y_pred=pred))
+                rmse = np.sqrt(mean_squared_error(y_true=_y[dev_idx:], y_pred=pred))
                 self.score += rmse
                 print(f'RMSE: {rmse:.3f}')
                 print('#' * 30)
@@ -448,35 +459,36 @@ class LGBMModel_storeid(M5Model_storeid):
                 pred_val = model.predict(_vals[self.features], num_iteration=model.best_iteration)
                 pred_eval = model.predict(_evals[self.features], num_iteration=model.best_iteration)
 
-                # WRMSSE
-                t = pd.DataFrame({
-                    'id': wrmsse_id,
-                    'date': wrmsse_date,
-                    'demand': pred_wrmsse
-                })
-
-                res_wrmsse = pd.concat([res_wrmsse, t], axis=0, ignore_index=True)
-
-                # val
-                t = pd.DataFrame({
-                    'id': _vals_id,
-                    'date': _vals_date,
-                    'demand': pred_val
-                })
-
-                res_val = pd.concat([res_val, t], axis=0, ignore_index=True)
-
-                # eval
-                t = pd.DataFrame({
-                    'id': _evals_id,
-                    'date': _evals_date,
-                    'demand': pred_eval
-                })
-
-                res_eval = pd.concat([res_eval, t], axis=0, ignore_index=True)
-
                 del model, train_data, valid_data, pred, rmse
                 gc.collect()
+
+            # 予測した値をデータフレーム形式に格納
+            # WRMSSE
+            t = pd.DataFrame({
+                'id': wrmsse_id,
+                'date': wrmsse_date,
+                'demand': pred_wrmsse
+            })
+
+            res_wrmsse = pd.concat([res_wrmsse, t], axis=0, ignore_index=True)
+
+            # val
+            t = pd.DataFrame({
+                'id': _vals_id,
+                'date': _vals_date,
+                'demand': pred_val
+            })
+
+            res_val = pd.concat([res_val, t], axis=0, ignore_index=True)
+
+            # eval
+            t = pd.DataFrame({
+                'id': _evals_id,
+                'date': _evals_date,
+                'demand': pred_eval
+            })
+
+            res_eval = pd.concat([res_eval, t], axis=0, ignore_index=True)
 
         print(f'All Fold RMSE: {self.score:.3f}')
 

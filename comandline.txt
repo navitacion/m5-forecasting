@@ -109,13 +109,14 @@ RMSE: 2.119  WRMSSE: 0.624  PB: 2.57433
 
 
 # パラメータを変えてみる
+# numは無視（n_estimators=1400）で設定
 https://www.kaggle.com/kyakovlev/m5-three-shades-of-dark-darker-magic
 python train.py -exp lgbm_tweedie_10 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 20000 -early 2000000 -drate 0.6 -subs 0.5 -featfrac 0.5
 target_features = [
         'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Lag_RollMean_45',
         'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
     ]
-RMSE:   WRMSSE:   PB: 
+RMSE: 2.270   WRMSSE: 0.560   PB: 0.60306
 
 
 
@@ -123,7 +124,52 @@ RMSE:   WRMSSE:   PB:
 
 
 # 店舗ごとのモデル
-python train_store_id.py -exp lgbm_tweedie_storeid_1 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.4
+python train_group.py -exp lgbm_tweedie_storeid_1 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 20000 -early 200 -drate 0.4 -grp store
 target_features = [
         'Snap', 'SellPrice', 'Ids', 'Event',
+    ]
+RMSE: 2.730  WRMSSE: 1.157  PB: 1.19527
+
+
+# 変数を増加　earlyboostroundも変更
+python train_group.py -exp lgbm_tweedie_storeid_2 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 2000 -early 20000 -drate 0.6 -grp store
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Lag_RollMean_45',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+RMSE: 2.268  WRMSSE: 0.581  PB: 0.64558
+
+
+# numboostroundを増加させる
+python train_group.py -exp lgbm_tweedie_storeid_3 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 5000 -early 20000 -drate 0.6 -grp store
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Lag_RollMean_45',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+RMSE: 2.275  WRMSSE: 0.571  PB: 0.64365
+
+
+
+python train_group.py -exp lgbm_tweedie_storeid_4 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 5000 -early 20000 -drate 0.8 -grp store
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Lag_RollMean_45',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+RMSE: 2.260  WRMSSE: 0.560  PB: 0.64807
+
+
+# metricsのrmseを削除　earlystoppingroundsの対象にrmseを考慮させないため
+python train_group.py -exp lgbm_tweedie_storeid_5 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 5000 -early 200 -drate 0.8 -grp store
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Lag_RollMean_45',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+RMSE: 2.250  WRMSSE: 0.578  PB: 0.64449
+
+
+# num_leaves, min_data_in_leaf
+python train_group.py -exp lgbm_tweedie_storeid_6 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 2000 -early 200 -drate 0.8 -subs 0.5 -featfrac 0.5 -grp store
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Lag_RollMean_45',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
     ]

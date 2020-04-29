@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.model_selection import KFold, TimeSeriesSplit
 
 from utils.utils import load_data, load_from_feather, reduce_mem_usage, seed_everything
-from model.Model import LGBMModel_storeid
+from model.Model import LGBMModel_group
 
 
 # Parser  ################################################################
@@ -18,6 +18,7 @@ parser.add_argument('-nsplit', '--nsplit', type=int, default=4)
 parser.add_argument('-num', '--num_boost_round', type=int, default=1000)
 parser.add_argument('-early', '--early_stopping_rounds', type=int, default=10)
 parser.add_argument('-drate', '--data_rate', type=float, default=0.1)
+parser.add_argument('-grp', '--group', default='store', choices=['store', 'cat', 'state'])
 parser.add_argument('-prep', '--preprocess', action='store_true')
 parser.add_argument('-post', '--postprocess', action='store_true')
 args = parser.parse_args()
@@ -27,10 +28,13 @@ args = parser.parse_args()
 params = {
     'boosting_type': 'gbdt',
     'objective': args.objective,
-    'metric': 'rmse',
+    # 'metric': 'rmse',
     'learning_rate': args.learningrate,
     'subsample': args.subsample,
     'subsample_freq': 1,
+    'num_leaves': 2**11-1,
+    'min_data_in_leaf': 2**12-1,
+    'boost_from_average': False,
     'feature_fraction': args.featurefraction,
     'seed': 0
 
@@ -84,14 +88,15 @@ def main():
 
     # From Feather  #################
     target_features = [
-        'Snap', 'SellPrice', 'Ids', 'Event',
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Lag_RollMean_45',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
     ]
 
     target_path = [f'../features/{name}.ftr' for name in target_features]
     df = load_from_feather(target_path)
 
     # Model Training  #####################################
-    lgbm = LGBMModel_storeid(df, **config)
+    lgbm = LGBMModel_group(df, **config)
     res = lgbm.train()
 
     # WRMSSE  ##################################################
