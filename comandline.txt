@@ -119,6 +119,45 @@ target_features = [
 RMSE: 2.270   WRMSSE: 0.560   PB: 0.60306
 
 
+# Lagとsnapを少々いじる
+python train.py -exp lgbm_tweedie_11 -obj tweedie -lr 0.01 -cv none -nsplit 3 -early 2000000 -drate 0.6 -subs 0.5 -featfrac 0.5
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+RMSE: 2.266   WRMSSE: 0.562   PB: 0.58197
+
+
+# Lag, RollMean_28を変更
+# lgbm_tweedie_11と同じ条件
+# Lagは長期間複数パターンあったほうがいいみたい
+python train.py -exp lgbm_tweedie_12 -obj tweedie -lr 0.01 -cv none -nsplit 3 -early 2000000 -drate 0.6 -subs 0.5 -featfrac 0.5
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+RMSE: 2.259   WRMSSE: 0.554   PB: 0.59241
+
+
+# 学習率をさげてみた
+# めっちゃ時間かかる（21時間）
+python train.py -exp lgbm_tweedie_13 -obj tweedie -lr 0.001 -cv none -nsplit 3 -num 100000 -early 500 -drate 0.6 -subs 0.7 -featfrac 0.7
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+RMSE: 2.267   WRMSSE: 0.614   PB: 0.64170
+
+
+
+python train.py -exp lgbm_tweedie_14 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 1500 -early 2000000 -drate 0.8 -subs 0.5 -featfrac 0.5
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event',
+        'SalesPeriod', 'Price_StoreCatDate'
+    ]
+RMSE:    WRMSSE:    PB: 
+
 
 
 
@@ -173,3 +212,41 @@ target_features = [
         'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Lag_RollMean_45',
         'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
     ]
+RMSE: 2.298  WRMSSE: 0.590  PB: 0.62058
+
+
+# num_leaves, min_data_in_leaf
+python train_group.py -exp lgbm_tweedie_storeid_7 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 2000 -early 200 -drate 0.6 -subs 0.5 -featfrac 0.5 -grp store
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+RMSE: 2.376  WRMSSE: 0.604  PB: 
+
+
+python train_group.py -exp lgbm_tweedie_storeid_8 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 2000 -early 200 -drate 0.8 -subs 0.5 -featfrac 0.5 -grp store
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+RMSE: 2.297  WRMSSE: 0.591   PB: 0.59905
+
+
+
+
+python train_group.py -exp lgbm_tweedie_stateid_1 -obj tweedie -lr 0.01 -cv none -nsplit 3 -num 2000 -early 200 -drate 0.8 -subs 0.5 -featfrac 0.5 -grp state
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+RMSE: 2.408  WRMSSE: 0.573   PB: 0.59028
+
+
+
+# KFold (shuffle=True)
+python train.py -exp lgbm_tweedie_kfold_1 -obj tweedie -lr 0.01 -cv kfold -nsplit 4 -num 1500 -early 2000000 -drate 0.6 -subs 0.5 -featfrac 0.5
+target_features = [
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28',
+        'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
+    ]
+RMSE: 2.453  WRMSSE: 0.669   PB: 0.65993

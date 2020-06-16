@@ -123,68 +123,70 @@ class LGBMModel(M5Model):
         print('LightGBM Model Training...')
         print('Train Data Shape: ', self.X.shape)
         self.score = 0.0
+        val_pred = np.zeros(len(self.X_val_wrmsse))
 
-        # クロスバリデーションを用いる場合
-        if self.cv != 'none':
-            val_pred = np.zeros(len(self.X_val_wrmsse))
-            for i, (trn_idx, val_idx) in enumerate(self.cv.split(self.X)):
-                train_data = lgb.Dataset(self.X[trn_idx], label=self.target[trn_idx],
-                                         categorical_feature=self.cat_features)
-                valid_data = lgb.Dataset(self.X[val_idx], label=self.target[val_idx],
-                                         categorical_feature=self.cat_features, reference=train_data)
+        # LightGBMの学習関数
+        def run_lgb(X_train, y_train, X_val, y_val, params, importance,
+                    cv=None, cat_features=None, early=10, verbose=10):
 
-                model = lgb.train(self.params,
-                                  train_data,
-                                  valid_sets=[valid_data, train_data],
-                                  valid_names=['eval', 'train'],
-                                  num_boost_round=self.num_boost_round,
-                                  early_stopping_rounds=self.early_stopping,
-                                  verbose_eval=self.verbose,
-                                  fobj=custom_asymmetric_train,
-                                  feval=custom_asymmetric_valid
-                                  )
-                self.models.append(model)
+            train_data = lgb.Dataset(X_train, label=y_train, categorical_feature=cat_features)
+            valid_data = lgb.Dataset(X_val, label=y_val, categorical_feature=cat_features, reference=train_data)
 
-                self.importances += model.feature_importance() / self.cv.get_n_splits()
-
-                pred = model.predict(self.X[val_idx], num_iteration=model.best_iteration)
-                rmse = np.sqrt(mean_squared_error(y_true=self.target[val_idx], y_pred=pred))
-                self.score += rmse / self.cv.get_n_splits()
-                print(f'{i + 1} Fold  RMSE: {rmse:.3f}')
-                print('#' * 30)
-
-                val_pred += model.predict(self.X_val_wrmsse[self.features], num_iteration=model.best_iteration) / self.cv.get_n_splits()
-                del model, train_data, valid_data, pred, rmse
-                gc.collect()
-        # クロスバリデーションをしない場合
-        else:
-            dev_idx = int(len(self.X) * 0.8)
-            train_data = lgb.Dataset(self.X[:dev_idx], label=self.target[:dev_idx])
-            valid_data = lgb.Dataset(self.X[dev_idx:], label=self.target[dev_idx:],
-                                     reference=train_data)
-
-            model = lgb.train(self.params,
+            model = lgb.train(params,
                               train_data,
                               valid_sets=[valid_data, train_data],
                               valid_names=['eval', 'train'],
-                              num_boost_round=self.num_boost_round,
-                              early_stopping_rounds=self.early_stopping,
-                              verbose_eval=self.verbose,
+                              early_stopping_rounds=early,
+                              verbose_eval=verbose,
                               fobj=custom_asymmetric_train,
                               feval=custom_asymmetric_valid
                               )
-            self.models.append(model)
 
-            self.importances += model.feature_importance()
-
-            pred = model.predict(self.X[dev_idx:], num_iteration=model.best_iteration)
-            rmse = np.sqrt(mean_squared_error(y_true=self.target[dev_idx:], y_pred=pred))
-            self.score += rmse
+            pred = model.predict(X_val, num_iteration=model.best_iteration)
+            rmse = np.sqrt(mean_squared_error(y_true=y_val, y_pred=pred))
             print(f'RMSE: {rmse:.3f}')
             print('#' * 30)
 
-            val_pred = model.predict(self.X_val_wrmsse[self.features], num_iteration=model.best_iteration)
-            del model, train_data, valid_data, pred, rmse
+            if cv is not None:
+                importance += model.feature_importance() / self.cv.get_n_splits()
+                score = rmse / self.cv.get_n_splits()
+            else:
+                importance += model.feature_importance()
+                score = rmse
+
+            return model, score, importance
+
+        # クロスバリデーションを用いる場合
+        if self.cv is not None:
+            for i, (trn_idx, val_idx) in enumerate(self.cv.split(self.X)):
+                model, score, importance = run_lgb(self.X[trn_idx], self.target[trn_idx],
+                                                   self.X[val_idx], self.target[val_idx],
+                                                   self.params, self.importances, cv=self.cv,
+                                                   cat_features=self.cat_features, early=self.early_stopping,
+                                                   verbose=self.verbose)
+                self.models.append(model)
+                self.score += score
+                self.importances += importance
+
+                val_pred += model.predict(self.X_val_wrmsse[self.features], num_iteration=model.best_iteration) / self.cv.get_n_splits()
+                del model
+                gc.collect()
+
+        # クロスバリデーションをしない場合
+        elif self.cv is None:
+            dev_idx = int(len(self.X) * 0.8)
+            model, score, importance = run_lgb(self.X[:dev_idx], self.target[:dev_idx],
+                                               self.X[dev_idx:], self.target[dev_idx:],
+                                               self.params, self.importances, cv=self.cv,
+                                               cat_features=self.cat_features, early=self.early_stopping,
+                                               verbose=self.verbose)
+
+            self.models.append(model)
+            self.score += score
+            self.importances += importance
+
+            val_pred += model.predict(self.X_val_wrmsse[self.features], num_iteration=model.best_iteration)
+            del model
             gc.collect()
 
         print(f'All Fold RMSE: {self.score:.3f}')
@@ -393,7 +395,7 @@ class LGBMModel_group(M5Model_group):
             _evals_date = _evals['date'].values
 
             # クロスバリデーションを用いる場合
-            if self.cv != 'none':
+            if self.cv == 'time' or self.cv == 'kfold':
                 pred_wrmsse = np.zeros(len(_X_val_wrmsse))
                 pred_val = np.zeros(len(_vals))
                 pred_eval = np.zeros(len(_evals))
@@ -430,7 +432,7 @@ class LGBMModel_group(M5Model_group):
                     gc.collect()
 
             # クロスバリデーションをしない場合
-            else:
+            elif self.cv is None:
                 dev_idx = int(len(_X) * 0.8)
                 train_data = lgb.Dataset(_X[:dev_idx], label=_y[:dev_idx])
                 valid_data = lgb.Dataset(_X[dev_idx:], label=_y[dev_idx:], reference=train_data)

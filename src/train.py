@@ -5,6 +5,7 @@ from sklearn.model_selection import KFold, TimeSeriesSplit
 from utils.utils import load_data, load_from_feather, reduce_mem_usage, seed_everything
 from model.Model import LGBMModel
 
+seed_everything(0)
 
 # Parser  ################################################################
 parser = argparse.ArgumentParser()
@@ -15,7 +16,7 @@ parser.add_argument('-subs', '--subsample', type=float, default=1.0)
 parser.add_argument('-featfrac', '--featurefraction', type=float, default=1.0)
 parser.add_argument('-cv', '--crossval', default='kfold', choices=['kfold', 'time', 'none'])
 parser.add_argument('-nsplit', '--nsplit', type=int, default=4)
-parser.add_argument('-num', '--num_boost_round', type=int, default=1000)
+parser.add_argument('-num', '--num_boost_round', type=int, default=1400)
 parser.add_argument('-early', '--early_stopping_rounds', type=int, default=10)
 parser.add_argument('-drate', '--data_rate', type=float, default=0.1)
 parser.add_argument('-prep', '--preprocess', action='store_true')
@@ -24,17 +25,6 @@ args = parser.parse_args()
 
 
 # Parameter  #############################################################
-# params = {
-#     'boosting_type': 'gbdt',
-#     'objective': args.objective,
-#     'metric': 'rmse',
-#     'learning_rate': args.learningrate,
-#     'subsample': args.subsample,
-#     'subsample_freq': 1,
-#     'feature_fraction': args.featurefraction,
-#     'seed': 0
-# }
-
 params = {
     'boosting_type': 'gbdt',
     'objective': args.objective,
@@ -43,10 +33,11 @@ params = {
     'subsample': args.subsample,
     'subsample_freq': 1,
     'feature_fraction': args.featurefraction,
+    'num_iterations': args.num_boost_round,
     'seed': 0,
-    'num_leaves': 2**11-1,
-    'min_data_in_leaf': 2**12-1,
-    'n_estimators': 1400,
+    'max_depth': 5,
+    'num_leaves': 2**11-1,       # 2**11-1
+    'min_data_in_leaf': 2**12-1,    # 2**12-1
     'boost_from_average': False,
 }
 
@@ -55,9 +46,9 @@ if args.objective == 'tweedie':
 
 # Cross Validation
 cv = {
-    'kfold': KFold(n_splits=args.nsplit),
+    'kfold': KFold(n_splits=args.nsplit, shuffle=True),
     'time': TimeSeriesSplit(n_splits=args.nsplit),
-    'none': 'none'
+    'none': None
 }
 
 # Config  #####################################
@@ -65,13 +56,11 @@ config = {
     'features': None,
     'params': params,
     'cv': cv[args.crossval],
-    'num_boost_round': args.num_boost_round,
     'early_stopping_rounds': args.early_stopping_rounds,
     'verbose': 100,
     'use_data': args.data_rate,
     'exp_name': args.expname,
-    'drop_f': ['snap_CA', 'snap_WI', 'snap_TX', 'cat_id', 'state_id', 'dept_id',
-               'event_name_1', 'event_type_1', 'event_name_2', 'event_type_2'],
+    'drop_f': ['event_name_2', 'event_type_2', 'snap_CA', 'snap_WI', 'snap_TX'],
     'use_prep': args.preprocess,
 }
 
@@ -98,7 +87,7 @@ def main():
 
     # From Feather  #################
     target_features = [
-        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Lag_RollMean_45',
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28',
         'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
     ]
 

@@ -5,6 +5,7 @@ from sklearn.model_selection import KFold, TimeSeriesSplit
 from utils.utils import load_data, load_from_feather, reduce_mem_usage, seed_everything
 from model.Model import LGBMModel_group
 
+seed_everything(0)
 
 # Parser  ################################################################
 parser = argparse.ArgumentParser()
@@ -29,6 +30,7 @@ params = {
     'boosting_type': 'gbdt',
     'objective': args.objective,
     # 'metric': 'rmse',
+    'num_iterations': args.num_boost_round,
     'learning_rate': args.learningrate,
     'subsample': args.subsample,
     'subsample_freq': 1,
@@ -47,7 +49,7 @@ if args.objective == 'tweedie':
 cv = {
     'kfold': KFold(n_splits=args.nsplit),
     'time': TimeSeriesSplit(n_splits=args.nsplit),
-    'none': 'none'
+    'none': None
 }
 
 # Config  #####################################
@@ -55,14 +57,13 @@ config = {
     'features': None,
     'params': params,
     'cv': cv[args.crossval],
-    'num_boost_round': args.num_boost_round,
     'early_stopping_rounds': args.early_stopping_rounds,
     'verbose': 100,
     'use_data': args.data_rate,
     'exp_name': args.expname,
-    'drop_f': ['snap_CA', 'snap_WI', 'snap_TX', 'cat_id', 'state_id', 'dept_id',
-               'event_name_1', 'event_type_1', 'event_name_2', 'event_type_2'],
-    'use_prep': args.preprocess
+    'drop_f': ['event_name_2', 'event_type_2'],
+    'use_prep': args.preprocess,
+    'group_col': args.group
 }
 
 save_model = True
@@ -88,7 +89,7 @@ def main():
 
     # From Feather  #################
     target_features = [
-        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28', 'Lag_RollMean_45',
+        'Snap', 'SellPrice', 'Lag', 'Lag_RollMean_28',
         'TimeFeatures', 'Lag_SellPrice', 'Lag_SellPrice_diff', 'Ids', 'Event'
     ]
 

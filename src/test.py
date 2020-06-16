@@ -4,17 +4,19 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from utils.utils import reduce_mem_usage
 
-with open('../data/input/data.pkl', 'rb') as f:
-    df = pickle.load(f)
-
-df = df[df['store_id'] == 'CA_1']
-
-print(df.head())
-print(df.index)
+df = pd.read_csv('../data/output/lgbm_tweedie_11_wrmsse_0.562.csv')
 
 
-temp = df['sell_price'].values
+alphas = [1.035, 1.03, 1.025]
+weights = [1 / len(alphas)] * len(alphas)
+_df = df.copy()
 
-temp[[1, 3]] = [300, 300]
+F_list = [f'F{i + 1}' for i in range(28)]
 
-print(temp)
+for f in F_list:
+    _df[f] = 0
+
+    for alpha, weight in zip(alphas, weights):
+        _df[f] += alpha * weight * df[f]
+
+_df.to_csv('../data/output/lgbm_tweedie_11_wrmsse_0.562_post.csv', index=False)
